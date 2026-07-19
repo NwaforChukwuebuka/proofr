@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import { TrendChart } from "./trend-chart";
+import { FraudFlagsCard, type FraudFlag } from "./fraud-flags";
 
 interface Merchant {
   id: string;
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [flags, setFlags] = useState<FraudFlag[]>([]);
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [justUpdated, setJustUpdated] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +55,24 @@ export default function DashboardPage() {
     },
     []
   );
+
+  const fetchFlags = useCallback(async (merchantId: string) => {
+    const supabase = getBrowserSupabaseClient();
+    const { data, error } = await supabase
+      .from("fraud_flags")
+      .select(
+        "id, rule_type, severity, status, created_at, transactions!inner(id, amount, payer_name, payer_account, created_at)"
+      )
+      .eq("transactions.merchant_id", merchantId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("Failed to load fraud flags", error);
+      return;
+    }
+    setFlags((data ?? []) as unknown as FraudFlag[]);
+  }, []);
 
   // Initial load: session -> merchant profile -> revenue.
   useEffect(() => {
@@ -88,11 +108,14 @@ export default function DashboardPage() {
       setMerchant(merchantRow as Merchant);
 
       if ((merchantRow as Merchant).approval_status === "approved") {
-        await fetchRevenue(
-          (merchantRow as Merchant).id,
-          currentSession.access_token,
-          "daily"
-        );
+        await Promise.all([
+          fetchRevenue(
+            (merchantRow as Merchant).id,
+            currentSession.access_token,
+            "daily"
+          ),
+          fetchFlags((merchantRow as Merchant).id),
+        ]);
       }
 
       setLoading(false);
@@ -102,7 +125,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, fetchRevenue]);
+  }, [router, fetchRevenue, fetchFlags]);
 
   // Granularity toggle re-fetch.
   useEffect(() => {
@@ -131,8 +154,38 @@ export default function DashboardPage() {
         },
         () => {
           fetchRevenue(merchant.id, session.access_token, granularity);
+          fetchFlags(merchant.id);
           setJustUpdated(true);
           setTimeout(() => setJustUpdated(false), 3000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchant?.id]);
+
+  // Second realtime subscription: fraud_flags is written by runFraudChecks
+  // *after* the transaction insert, in the same webhook request but as a
+  // separate write moments later — the transactions subscription above can
+  // fire before the flag row exists. Subscribing to fraud_flags directly
+  // (RLS-scoped, no merchant_id column to filter on client-side) catches
+  // that case and re-fetches both flags and revenue (verifiedRevenue changes
+  // once a flag opens).
+  useEffect(() => {
+    if (!merchant || merchant.approval_status !== "approved" || !session) return;
+
+    const supabase = getBrowserSupabaseClient();
+    const channel = supabase
+      .channel(`fraud-flags-merchant-${merchant.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "fraud_flags" },
+        () => {
+          fetchFlags(merchant.id);
+          fetchRevenue(merchant.id, session.access_token, granularity);
         }
       )
       .subscribe();
@@ -260,6 +313,12 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-zinc-400">
                 Gross inflow: {revenue ? formatNaira(revenue.grossInflow) : "—"}
               </p>
+              {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
+                <p className="mt-1 text-xs font-medium text-red-600">
+                  {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)}{" "}
+                  excluded due to flagged activity
+                </p>
+              )}
 
               <div className="mt-5 flex items-center justify-between">
                 <p className="text-xs font-semibold text-zinc-500">Trend</p>
@@ -293,6 +352,8 @@ export default function DashboardPage() {
                 <TrendChart trend={revenue?.trend ?? []} />
               </div>
             </div>
+
+            <FraudFlagsCard flags={flags} />
           </div>
         )}
       </div>

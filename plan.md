@@ -50,7 +50,7 @@ As-built API reference (actual request/response examples, auth headers, mocked p
    Implement the four rules from [fraud-rules.md](fraud-rules.md) against each incoming transaction, write flags to `fraud_flags`.
    *Done when*: seeded test transactions correctly trigger/don't trigger each rule.
 
-9. `[ ]` **(Frontend) Fraud flags surfaced on dashboard**
+9. `[x]` **(Frontend) Fraud flags surfaced on dashboard**
    Visible flag badges/list on merchant dashboard.
    *Done when*: a flagged transaction is visibly distinguishable.
 
