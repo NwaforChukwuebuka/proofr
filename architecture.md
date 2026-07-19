@@ -33,7 +33,7 @@ flowchart LR
 |---|---|
 | `MONNIFY_API_KEY` / `MONNIFY_SECRET_KEY` | Authenticate Monnify API calls |
 | `MONNIFY_CONTRACT_CODE` | Required for reserved account creation |
-| `MONNIFY_WEBHOOK_SECRET` | Verify incoming webhook signatures |
+| `MONNIFY_WEBHOOK_SECRET` | Scaffolded but unused — Monnify signs webhooks with `MONNIFY_SECRET_KEY`, not a separate secret. See handoff.md milestone 5. |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client-side Supabase access (RLS-scoped) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side only: webhook ingestion, fraud engine, admin overrides |
 

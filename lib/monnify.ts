@@ -1,9 +1,16 @@
 /**
- * Monnify sandbox client — reserved (virtual) account issuance.
+ * Monnify sandbox client — reserved (virtual) account issuance and
+ * webhook signature verification.
  * Sandbox only, per project constraints: https://sandbox.monnify.com
  * Docs: https://developers.monnify.com/docs (Reserve An Account V1,
- * /api/v1/auth/login for token auth).
+ * /api/v1/auth/login for token auth; webhook signature per
+ * https://developers.monnify.com/docs/integration-tools/webhooks/ and
+ * https://teamapt.atlassian.net/wiki/spaces/MON/pages/212008918 —
+ * not yet confirmed against a live sandbox webhook call, see handoff.md
+ * milestone 5 entry).
  */
+
+import crypto from "crypto";
 
 const MONNIFY_BASE_URL = "https://sandbox.monnify.com";
 
@@ -152,4 +159,34 @@ export async function createReservedAccount(
     accountReference: data.responseBody.accountReference,
     reservationReference: data.responseBody.reservationReference,
   };
+}
+
+/**
+ * Verifies the `monnify-signature` header on an incoming webhook request.
+ * Per Monnify's docs, the signature is HMAC-SHA512(secretKey, rawRequestBody)
+ * — the *raw* (unparsed) body, hex-encoded. Must be computed over the exact
+ * bytes Monnify sent, before any JSON.parse, or the hash won't match.
+ *
+ * Monnify signs webhooks with the same client secret key used for API auth
+ * (`MONNIFY_SECRET_KEY`) — there is no separate, dashboard-configurable
+ * webhook secret, despite `MONNIFY_WEBHOOK_SECRET` having been scaffolded
+ * as if there were one since milestone 1. See handoff.md milestone 5 entry.
+ */
+export function verifyWebhookSignature(
+  rawBody: string,
+  signatureHeader: string | null
+): boolean {
+  const secret = process.env.MONNIFY_SECRET_KEY;
+  if (!secret || !signatureHeader) {
+    return false;
+  }
+
+  const expected = crypto.createHmac("sha512", secret).update(rawBody, "utf8").digest("hex");
+
+  const expectedBuf = Buffer.from(expected, "hex");
+  const receivedBuf = Buffer.from(signatureHeader, "hex");
+  if (expectedBuf.length !== receivedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expectedBuf, receivedBuf);
 }
