@@ -3,10 +3,14 @@ import {
   createBrowserSupabaseClient,
   createServiceRoleSupabaseClient,
 } from "@/lib/supabase";
+import { computeRevenueSummary } from "@/lib/revenue";
 
 /**
  * Milestone 6: gross inflow / trend for a merchant. Milestone 8: verified
- * revenue now actually excludes fraud-flagged transactions.
+ * revenue now actually excludes fraud-flagged transactions. Milestone 10:
+ * the actual aggregation moved to lib/revenue.ts (computeRevenueSummary) so
+ * report generation reuses the identical logic instead of duplicating it —
+ * this route is now just auth + the granularity param + the call.
  *
  * "Gross inflow" is the unfiltered sum of transactions.amount (Monnify's
  * gross amountPaid). "Verified revenue" excludes any transaction with an
@@ -19,18 +23,6 @@ import {
  * "overridden", set by milestone 14's admin override — not built yet) do
  * not exclude a transaction.
  */
-
-interface TransactionRow {
-  id: string;
-  amount: number;
-  created_at: string;
-}
-
-function bucketKey(createdAt: string, granularity: "daily" | "monthly"): string {
-  // created_at is a Postgres timestamptz ISO string; slice gives a stable
-  // UTC-based bucket key without pulling in a date library.
-  return granularity === "monthly" ? createdAt.slice(0, 7) : createdAt.slice(0, 10);
-}
 
 export async function GET(
   request: Request,
@@ -86,51 +78,11 @@ export async function GET(
   const url = new URL(request.url);
   const granularity = url.searchParams.get("granularity") === "monthly" ? "monthly" : "daily";
 
-  const { data: transactions, error: txError } = await supabase
-    .from("transactions")
-    .select("id, amount, created_at")
-    .eq("merchant_id", id)
-    .order("created_at", { ascending: true });
-
-  if (txError) {
-    return NextResponse.json({ error: txError.message }, { status: 500 });
+  try {
+    const summary = await computeRevenueSummary(supabase, id, granularity);
+    return NextResponse.json(summary);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const rows = (transactions ?? []) as TransactionRow[];
-
-  const flaggedTransactionIds = new Set<string>();
-  if (rows.length > 0) {
-    const { data: openFlags, error: flagsError } = await supabase
-      .from("fraud_flags")
-      .select("transaction_id")
-      .eq("status", "open")
-      .in("transaction_id", rows.map((r) => r.id));
-
-    if (flagsError) {
-      return NextResponse.json({ error: flagsError.message }, { status: 500 });
-    }
-
-    for (const f of openFlags ?? []) {
-      flaggedTransactionIds.add(f.transaction_id as string);
-    }
-  }
-
-  let grossInflow = 0;
-  let verifiedRevenue = 0;
-  const trendMap = new Map<string, number>();
-  for (const row of rows) {
-    const amount = Number(row.amount);
-    grossInflow += amount;
-    if (!flaggedTransactionIds.has(row.id)) {
-      verifiedRevenue += amount;
-    }
-    const key = bucketKey(row.created_at, granularity);
-    trendMap.set(key, (trendMap.get(key) ?? 0) + amount);
-  }
-
-  const trend = Array.from(trendMap.entries())
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([period, amount]) => ({ period, amount }));
-
-  return NextResponse.json({ grossInflow, verifiedRevenue, trend });
 }

@@ -143,6 +143,57 @@ Public route — no session. Called directly by Monnify.
 
 ---
 
+## `POST /api/merchants/:id/report`
+*Milestone 10. Implemented in [app/api/merchants/[id]/report/route.ts](app/api/merchants/[id]/report/route.ts). Shares revenue aggregation with [lib/revenue.ts](lib/revenue.ts) (factored out of the milestone 6 revenue route) and confidence scoring with [lib/confidence.ts](lib/confidence.ts).*
+
+**Auth**: same `Authorization: Bearer <supabase-access-token>` pattern as `GET /api/merchants/:id/revenue`, restricted to the **owning merchant only** (no lender path — the frozen contract for `POST` is merchant-only; lenders read via `GET`).
+
+**Request**: `{}` (body ignored)
+
+**Response `200`**
+```json
+{ "reportId": "07569391-f3ef-432c-abda-276dbbfacfcf", "generatedAt": "2026-07-19T23:48:48.740099+00:00" }
+```
+
+**Errors**: `401` — missing/invalid bearer token. `403` — valid token belonging to a different merchant (or a lender — `POST` has no lender path). `404` — no merchant with that id. `500` — Supabase error.
+
+**Server-side flow**: runs `computeRevenueSummary` (grossInflow/verifiedRevenue/trend, daily granularity) and a fetch of open `fraud_flags` joined to their `transactions` (for `payer_account`/`amount`) in parallel, computes `confidenceScore` via `computeConfidenceScore`, then inserts one `reports` row: `revenue_summary: { grossInflow, verifiedRevenue }`, `trend_data` (the trend array), `confidence_score`, `fraud_flags_snapshot` (raw open-flag rows plus their transaction's `payer_account`/`amount`, per milestone 9's note that plain-language labels are a display concern, not a snapshot concern).
+
+**Confidence score grouping decision** (the seam milestone 8 flagged): `fraud-rules.md` words penalties per *distinct triggering group* (circular_transfer: per payer; identical_transfers: per payer+amount group), but `lib/fraud.ts` writes one flag row per rule per qualifying transaction. `lib/confidence.ts` dedupes open flags into groups before penalizing — `circular_transfer` grouped by `payer_account`, `identical_transfers` grouped by `payer_account + amount`, `self_funding` and `velocity_spike` each collapsed to a single flat deduction regardless of row count (per `fraud-rules.md`'s "single occurrence is enough" / merchant-wide-check wording). Score starts at 100, floors at 0. Only `status: "open"` flags count — `overridden` flags are excluded entirely from both the score and the snapshot.
+
+**Verified against real data (local dev server against the live Supabase project)**: seeded a disposable `TEST-M10-SEED-*` merchant. Clean case (1 real transaction, no flags): `confidenceScore: 100`, `grossInflow === verifiedRevenue === 50000`. Seeded-flags case (added 2 `identical_transfers` flags on 2 different transactions sharing one payer+amount, 1 `self_funding` flag, 1 `overridden` `circular_transfer` flag): `confidenceScore: 60` (100 − 30 self_funding − 10 identical_transfers-as-one-group; the overridden circular_transfer contributed nothing), `verifiedRevenue` correctly excluded the 3 open-flagged transactions. All test data deleted afterward. **Timing**: 1.56s and 1.67s measured (`curl -w time_total`) against the local dev server hitting the live Supabase project — comfortably under the 5s PRD threshold; the query pattern (one indexed transactions scan + one flags-joined-to-transactions scan, both already used by other routes) doesn't change with report generation.
+
+---
+
+## `GET /api/merchants/:id/report`
+*Milestone 10. Implemented in the same route file as `POST`, above.*
+
+**Auth**: two paths.
+1. `Authorization: Bearer <supabase-access-token>` (no `reportId` query param) — owning merchant or any lender (same pattern as `GET /api/merchants/:id/revenue`), returns the merchant's **most recently generated** report.
+2. `?reportId=<uuid>` — **no auth check at all**. Per `api-contracts.md`'s "lender with a valid share link/report ID" and the absence of any lender auth system (milestone 12), knowledge of the report's UUID is treated as the credential. **This is a placeholder, not a real share mechanism**: a `reportId` is an unguessable v4 UUID today, but nothing expires it, scopes it to a specific viewer, or revokes it. A real implementation (post-hackathon) would need a signed, expiring share token (e.g. a JWT or HMAC'd value with an expiry claim) minted by the merchant, not the bare row id.
+
+**Request**: `GET /api/merchants/:id/report` (latest) or `GET /api/merchants/:id/report?reportId=<uuid>` (specific report; must belong to the merchant in the path, `404` otherwise).
+
+**Response `200`**
+```json
+{
+  "profile": { "businessName": "...", "approvalStatus": "approved", "hasVirtualAccount": true },
+  "verificationStatus": { "bvnNinVerified": false },
+  "revenueSummary": { "grossInflow": 77000, "verifiedRevenue": 55000 },
+  "trendData": [{ "period": "2026-07-19", "amount": 77000 }],
+  "confidenceScore": 60,
+  "fraudFlags": [ { "id": "...", "rule_type": "identical_transfers", "severity": "medium", "status": "open", "transaction_id": "...", "payer_account": "...", "amount": 1000, "created_at": "..." } ],
+  "generatedAt": "2026-07-19T23:48:48.740099+00:00"
+}
+```
+`profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is.
+
+**Errors**: `401`/`403`/`404` as above for the bearer-token path. `404` — no report has ever been generated for the merchant (latest-report path), or the given `reportId` doesn't exist / doesn't belong to this merchant id (share-link path).
+
+**Verified**: both paths tested against the same seeded data as `POST` above — bearer-token latest-report fetch and unauthenticated `?reportId=` fetch both returned the identical, correct shape.
+
+---
+
 ## Not yet implemented
 
-Everything else in `api-contracts.md` (reports, lender search/detail routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
+Everything else in `api-contracts.md` (lender search/detail routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
