@@ -6,17 +6,19 @@ This plan turns the [PRD](PROOFR_MVP_PRD.md)'s Investor Demo Flow into a sequenc
 
 Stack: Next.js (TypeScript) PWA + Supabase (Postgres/Auth/Storage) + Monnify sandbox, deployed to Render from day one so Monnify's webhook has a stable public URL. See [architecture.md](architecture.md) for why this is a single monolith with a TS-only fraud engine.
 
+As-built API reference (actual request/response examples, auth headers, mocked pieces) lives in [api.md](api.md), kept current milestone by milestone — `api-contracts.md` stays the frozen upfront spec. Cross-milestone continuity (what shipped, what's mocked, what the next milestone's dev needs to know) lives in [handoff.md](handoff.md); every frontend milestone also drops its own `integration.md` per that doc's convention.
+
 **Legend**: `[ ]` not started · `[~]` in progress · `[x]` done · tag = `(Backend)` / `(Frontend)` / `(Both)`
 
 ---
 
 ## Day 1 — Core pipeline (Merchant → Payment → Revenue)
 
-1. `[ ]` **(Backend) Project scaffold & deploy**
+1. `[x]` **(Backend) Project scaffold & deploy**
    Next.js + TS app, Supabase project + schema migration ([data-model.md](data-model.md)), Render deploy, env vars wired (Monnify keys, Supabase keys).
    *Done when*: app is live on a Render URL with a working Supabase connection.
 
-2. `[ ]` **(Backend) Merchant onboarding API**
+2. `[x]` **(Backend) Merchant onboarding API**
    Signup, BVN/NIN verification (real call if Monnify/KYC sandbox supports it, else clearly-marked mock), business details, approval workflow, Supabase Auth wiring. See [api-contracts.md](api-contracts.md) `POST /api/merchants`.
    *Done when*: a merchant record can be created end-to-end via API and appears in Supabase.
 
