@@ -78,6 +78,46 @@ Public signup. No auth.
 
 ---
 
+## `POST /api/webhooks/monnify`
+*Milestone 5. Implemented in [app/api/webhooks/monnify/route.ts](app/api/webhooks/monnify/route.ts), signature verification in [lib/monnify.ts](lib/monnify.ts)'s `verifyWebhookSignature`.*
+
+Public route — no session. Called directly by Monnify.
+
+**Auth**: header `monnify-signature` — hex-encoded `HMAC-SHA512(MONNIFY_SECRET_KEY, rawRequestBody)`. **Correction to `architecture.md`'s original assumption**: Monnify signs webhooks with the same client secret key used for API auth (`MONNIFY_SECRET_KEY`), not a separate configurable "webhook secret" — confirmed both from Monnify's docs and by a real sandbox webhook call. `MONNIFY_WEBHOOK_SECRET` (scaffolded since milestone 1) is unused; left in `.env.local.example` as a no-op placeholder rather than removed, to avoid breaking anyone who already set it.
+
+**Request** (real payload, captured from a live sandbox transfer — `SUCCESSFUL_TRANSACTION` event, `RESERVED_ACCOUNT` product)
+```json
+{
+  "eventType": "SUCCESSFUL_TRANSACTION",
+  "eventData": {
+    "product": { "type": "RESERVED_ACCOUNT", "reference": "PROOFR-<merchantId>" },
+    "transactionReference": "MNFY|79|20260719222030|000096",
+    "paymentReference": "MNFY|79|20260719222030|000096",
+    "amountPaid": 30000,
+    "totalPayable": 30000,
+    "paymentStatus": "PAID",
+    "paymentMethod": "ACCOUNT_TRANSFER",
+    "destinationAccountInformation": { "accountNumber": "4003488430", "bankCode": "035", "bankName": "Wema bank" },
+    "paymentSourceInformation": [
+      { "accountName": "Monnify Limited", "accountNumber": "2048714015", "bankCode": "057", "amountPaid": 30000, "sessionId": "..." }
+    ],
+    "customer": { "name": "suya joint", "email": "chukwuebuka.nwaforx@gmail.com" }
+  }
+}
+```
+
+**Response `200`**: `{ "ok": true }` on a new transaction insert, `{ "ok": true, "alreadyProcessed": true }` on a retry of an already-seen `monnify_reference`, `{ "ok": true, "ignored": "<eventType>" }` for non-`SUCCESSFUL_TRANSACTION` events, `{ "ok": true, "unmatched": true }` if no merchant owns the destination account number (logged server-side, not silently dropped).
+
+**Errors**: `401` — missing/invalid `monnify-signature` (rejected before any DB access). `400` — unparseable JSON body, or a `SUCCESSFUL_TRANSACTION` event missing `transactionReference`/`destinationAccountInformation.accountNumber`/`amountPaid`. `500` — `MONNIFY_SECRET_KEY` not configured, or a Supabase error other than the expected unique-violation retry case.
+
+**Merchant matching**: via `eventData.destinationAccountInformation.accountNumber` against `merchants.monnify_account_number` — the flat bank account number Monnify actually pays into, which milestone 4 already persists. (Not via `product.reference`/`accountReference` — that's the reference PROOFR sent at account-creation time, `PROOFR-<merchantId>`, which isn't separately stored on the `merchants` row; the account number is the more direct match given what's already persisted.)
+
+**Transaction row fields**: `monnify_reference` = `transactionReference` (idempotency key), `amount` = `amountPaid`, `payer_name`/`payer_account` = `paymentSourceInformation[0].accountName`/`.accountNumber` (falls back to `customer.name`/`null` if absent), `raw_payload` = the full parsed webhook body.
+
+**Verified against a live Monnify sandbox payment, not just code-path.** Approved a real test merchant ("suya joint"), got a real reserved account (`4003488430`, Wema Bank) from `lib/monnify.ts`, configured the "Transaction completion" webhook in the Monnify dashboard to `https://proofr.onrender.com/api/webhooks/monnify`, and sent a ₦30,000 transfer via Monnify's Bank Simulator (`https://websim.sdk.monnify.com`). A correctly-shaped row appeared in the live Supabase `transactions` table within ~2 seconds. Re-sent the identical signed payload against the live endpoint afterward and confirmed no duplicate row (same row `id` returned, `alreadyProcessed: true`). Confirmed signature rejection (`401`) on both a tampered body and a missing header, against both local and live Render deployments.
+
+---
+
 ## Not yet implemented
 
-Everything else in `api-contracts.md` (`GET /api/merchants/:id/revenue`, `POST /api/webhooks/monnify`, reports, lender routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
+Everything else in `api-contracts.md` (`GET /api/merchants/:id/revenue`, reports, lender routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.

@@ -30,7 +30,7 @@ As-built API reference (actual request/response examples, auth headers, mocked p
    Call Monnify sandbox API on merchant approval, store reserved account details on the merchant record.
    *Done when*: an approved merchant has a real Monnify reserved account number persisted.
 
-5. `[ ]` **(Backend) Webhook ingestion**
+5. `[x]` **(Backend) Webhook ingestion**
    Public route handler for Monnify transaction webhooks (`POST /api/webhooks/monnify`), signature verification, immutable transaction record storage.
    *Done when*: a sandbox test payment produces a stored transaction row within seconds.
 
