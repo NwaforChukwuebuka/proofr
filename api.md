@@ -135,6 +135,8 @@ Public route — no session. Called directly by Monnify.
 
 **"Gross inflow" vs "verified revenue"**: identical for now — both sum `transactions.amount` (Monnify's gross `amountPaid`). No fraud screening exists yet (milestone 8), so "verified" has nothing to exclude yet. Full reasoning in `handoff.md`'s milestone 6 entry.
 
+**Index applied**: `idx_transactions_merchant_created` on `transactions (merchant_id, created_at)` (`supabase/migrations/0002_revenue_indexes.sql`) — run manually by the user against the live Supabase project (the agent's environment couldn't reach the DB directly over raw Postgres TCP).
+
 **Verified against the live Render deployment and real Supabase data**: queried the real "suya joint" merchant (`27608236-61e7-4a96-afdc-e2d3d872af5c`) with its real milestone-5 sandbox transaction (₦30,000) — response matched exactly. Also seeded three extra `transactions` rows spanning two months (clearly marked `TEST-M6-SEED-*` in `monnify_reference` and `{"test": true}` in `raw_payload`) to verify daily and monthly trend bucketing math, then deleted them afterward — confirmed `grossInflow` returned to ₦30,000 post-cleanup. Confirmed `401` (no token, garbage token), `403` (a different, unrelated merchant's real token against this merchant's id).
 
 ---

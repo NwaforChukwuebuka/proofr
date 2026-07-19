@@ -267,6 +267,12 @@ export default function SignupPage() {
               <p className="text-xs text-zinc-400">
                 Reference: {result.merchantId}
               </p>
+              <Link
+                href="/login"
+                className="inline-block text-sm font-semibold text-brand"
+              >
+                Go to login &rarr;
+              </Link>
             </div>
           )}
         </div>

@@ -22,6 +22,13 @@ export default function Home() {
         Get started as a merchant
       </Link>
 
+      <Link
+        href="/login"
+        className="mt-3 text-sm font-semibold text-blue-100 hover:text-white"
+      >
+        Already have an account? Log in
+      </Link>
+
       <div className="mt-12 w-full max-w-xs rounded-3xl bg-white p-5 text-left shadow-2xl">
         <p className="text-xs font-medium text-zinc-400">Verified revenue</p>
         <p className="mt-1 text-2xl font-extrabold text-zinc-900">

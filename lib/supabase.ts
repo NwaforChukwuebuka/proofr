@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Browser/RLS-scoped client — safe to use in client components and
@@ -9,6 +9,21 @@ export function createBrowserSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+}
+
+let browserClientSingleton: SupabaseClient | null = null;
+
+/**
+ * Shared browser client for client components (login, dashboard). A single
+ * instance avoids each component spinning up its own auth-refresh timer
+ * while still persisting the session via the SDK's default localStorage
+ * storage, so a signed-in session survives a page refresh.
+ */
+export function getBrowserSupabaseClient() {
+  if (!browserClientSingleton) {
+    browserClientSingleton = createBrowserSupabaseClient();
+  }
+  return browserClientSingleton;
 }
 
 /**
