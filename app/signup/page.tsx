@@ -111,186 +111,165 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center bg-zinc-50 px-6 py-12 dark:bg-black">
+    <div className="flex flex-1 flex-col items-center bg-brand px-4 py-10 sm:px-6">
       <div className="w-full max-w-md">
         <Link
           href="/"
-          className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="inline-flex items-center gap-2 text-sm font-medium text-blue-100 hover:text-white"
         >
           &larr; PROOFR
         </Link>
 
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          Merchant signup
-        </h1>
+        <div className="mt-4 rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+            {step === "pending" ? "You're all set" : "Merchant signup"}
+          </h1>
 
-        {step !== "pending" && <StepIndicator step={step} />}
+          {step !== "pending" && <StepIndicator step={step} />}
 
-        {step === "account" && (
-          <div className="mt-6 space-y-4">
-            <Field
-              label="Phone number"
-              hint="International format, e.g. +2348012345678"
-              value={form.phone}
-              onChange={(v) => update("phone", v)}
-              error={fieldErrors.phone}
-              type="tel"
-              placeholder="+2348012345678"
-            />
-            <Field
-              label="Email"
-              value={form.email}
-              onChange={(v) => update("email", v)}
-              error={fieldErrors.email}
-              type="email"
-              placeholder="you@business.com"
-            />
-            <Field
-              label="Password"
-              value={form.password}
-              onChange={(v) => update("password", v)}
-              error={fieldErrors.password}
-              type="password"
-              placeholder="At least 8 characters"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (validateAccount()) setStep("verification");
-              }}
-              className="w-full rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {step === "verification" && (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Verify your identity with your BVN or NIN to speed up approval.
-              This step is optional — you can add it later.
-            </p>
-            <Field
-              label="BVN or NIN"
-              hint="10–11 digit number"
-              value={form.bvnOrNin}
-              onChange={(v) => update("bvnOrNin", v)}
-              type="text"
-              placeholder="Optional"
-            />
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("account")}
-                className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep("business")}
-                className="w-full rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "business" && (
-          <div className="mt-6 space-y-4">
-            <Field
-              label="Business name"
-              value={form.businessName}
-              onChange={(v) => update("businessName", v)}
-              error={fieldErrors.businessName}
-              type="text"
-              placeholder="e.g. Test Suya Spot"
-            />
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("verification")}
-                className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (validateBusiness()) setStep("review");
-                }}
-                className="w-full rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "review" && (
-          <div className="mt-6 space-y-4">
-            <dl className="space-y-2 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-              <ReviewRow label="Phone" value={form.phone} />
-              <ReviewRow label="Email" value={form.email} />
-              <ReviewRow label="Business name" value={form.businessName} />
-              <ReviewRow
-                label="BVN/NIN"
-                value={form.bvnOrNin.trim() || "Not provided"}
+          {step === "account" && (
+            <div className="mt-6 space-y-4">
+              <Field
+                label="Phone number"
+                hint="International format, e.g. +2348012345678"
+                value={form.phone}
+                onChange={(v) => update("phone", v)}
+                error={fieldErrors.phone}
+                type="tel"
+                placeholder="+2348012345678"
               />
-            </dl>
-
-            {submitError && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-400">
-                {submitError}
-              </p>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("business")}
-                disabled={submitting}
-                className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              <Field
+                label="Email"
+                value={form.email}
+                onChange={(v) => update("email", v)}
+                error={fieldErrors.email}
+                type="email"
+                placeholder="you@business.com"
+              />
+              <Field
+                label="Password"
+                value={form.password}
+                onChange={(v) => update("password", v)}
+                error={fieldErrors.password}
+                type="password"
+                placeholder="At least 8 characters"
+              />
+              <PrimaryButton
+                onClick={() => {
+                  if (validateAccount()) setStep("verification");
+                }}
               >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={submitting}
-                className="w-full rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-              >
-                {submitting ? "Submitting…" : "Submit application"}
-              </button>
+                Continue
+              </PrimaryButton>
             </div>
-          </div>
-        )}
+          )}
 
-        {step === "pending" && result && (
-          <div className="mt-6 space-y-4 rounded-lg border border-zinc-200 p-6 text-center dark:border-zinc-800">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-              &#9203;
-            </div>
-            <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-              Application pending approval
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Thanks, {form.businessName}. Your account has been created and
-              your application is now with our team for review. We&apos;ll be
-              in touch once it&apos;s approved.
-            </p>
-            {kycVerified && (
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-400">
-                Identity verified
+          {step === "verification" && (
+            <div className="mt-6 space-y-4">
+              <p className="text-sm text-zinc-500">
+                Verify your identity with your BVN or NIN to speed up
+                approval. This step is optional — you can add it later.
               </p>
-            )}
-            <p className="text-xs text-zinc-400 dark:text-zinc-600">
-              Reference: {result.merchantId}
-            </p>
-          </div>
-        )}
+              <Field
+                label="BVN or NIN"
+                hint="10–11 digit number"
+                value={form.bvnOrNin}
+                onChange={(v) => update("bvnOrNin", v)}
+                type="text"
+                placeholder="Optional"
+              />
+              <div className="flex gap-3">
+                <SecondaryButton onClick={() => setStep("account")}>
+                  Back
+                </SecondaryButton>
+                <PrimaryButton onClick={() => setStep("business")}>
+                  Continue
+                </PrimaryButton>
+              </div>
+            </div>
+          )}
+
+          {step === "business" && (
+            <div className="mt-6 space-y-4">
+              <Field
+                label="Business name"
+                value={form.businessName}
+                onChange={(v) => update("businessName", v)}
+                error={fieldErrors.businessName}
+                type="text"
+                placeholder="e.g. Test Suya Spot"
+              />
+              <div className="flex gap-3">
+                <SecondaryButton onClick={() => setStep("verification")}>
+                  Back
+                </SecondaryButton>
+                <PrimaryButton
+                  onClick={() => {
+                    if (validateBusiness()) setStep("review");
+                  }}
+                >
+                  Continue
+                </PrimaryButton>
+              </div>
+            </div>
+          )}
+
+          {step === "review" && (
+            <div className="mt-6 space-y-4">
+              <dl className="space-y-2 rounded-2xl bg-brand-tint p-4 text-sm">
+                <ReviewRow label="Phone" value={form.phone} />
+                <ReviewRow label="Email" value={form.email} />
+                <ReviewRow label="Business name" value={form.businessName} />
+                <ReviewRow
+                  label="BVN/NIN"
+                  value={form.bvnOrNin.trim() || "Not provided"}
+                />
+              </dl>
+
+              {submitError && (
+                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {submitError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <SecondaryButton
+                  onClick={() => setStep("business")}
+                  disabled={submitting}
+                >
+                  Back
+                </SecondaryButton>
+                <PrimaryButton onClick={submit} disabled={submitting}>
+                  {submitting ? "Submitting…" : "Submit application"}
+                </PrimaryButton>
+              </div>
+            </div>
+          )}
+
+          {step === "pending" && result && (
+            <div className="mt-6 space-y-4 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-tint text-2xl text-brand">
+                &#9203;
+              </div>
+              <h2 className="text-lg font-bold text-zinc-900">
+                Application pending approval
+              </h2>
+              <p className="text-sm text-zinc-500">
+                Thanks, {form.businessName}. Your account has been created
+                and your application is now with our team for review.
+                We&apos;ll be in touch once it&apos;s approved.
+              </p>
+              {kycVerified && (
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                  Identity verified
+                </p>
+              )}
+              <p className="text-xs text-zinc-400">
+                Reference: {result.merchantId}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -311,14 +290,54 @@ function StepIndicator({ step }: { step: Step }) {
         <div key={s.key} className="flex flex-1 items-center gap-2">
           <div
             className={`h-1.5 flex-1 rounded-full ${
-              i <= currentIndex
-                ? "bg-black dark:bg-white"
-                : "bg-zinc-200 dark:bg-zinc-800"
+              i <= currentIndex ? "bg-brand" : "bg-brand-tint"
             }`}
           />
         </div>
       ))}
     </div>
+  );
+}
+
+function PrimaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full rounded-full bg-brand px-4 py-3 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full rounded-full border-2 border-brand-tint px-4 py-3 text-sm font-bold text-brand transition hover:bg-brand-tint disabled:opacity-50"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -341,29 +360,21 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        {label}
-      </span>
+      <span className="text-sm font-semibold text-zinc-700">{label}</span>
       <input
         type={type}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-black dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-white ${
-          error
-            ? "border-red-400"
-            : "border-zinc-300 dark:border-zinc-700"
+        className={`mt-1 w-full rounded-xl border-2 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand ${
+          error ? "border-red-400" : "border-brand-tint"
         }`}
       />
       {hint && !error && (
-        <span className="mt-1 block text-xs text-zinc-400 dark:text-zinc-600">
-          {hint}
-        </span>
+        <span className="mt-1 block text-xs text-zinc-400">{hint}</span>
       )}
       {error && (
-        <span className="mt-1 block text-xs text-red-600 dark:text-red-400">
-          {error}
-        </span>
+        <span className="mt-1 block text-xs text-red-600">{error}</span>
       )}
     </label>
   );
@@ -372,8 +383,8 @@ function Field({
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-zinc-500 dark:text-zinc-400">{label}</dt>
-      <dd className="truncate text-right font-medium text-black dark:text-zinc-50">
+      <dt className="text-zinc-500">{label}</dt>
+      <dd className="truncate text-right font-semibold text-zinc-900">
         {value}
       </dd>
     </div>

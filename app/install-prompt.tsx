@@ -28,15 +28,15 @@ export function InstallPrompt() {
   if (!deferredPrompt || dismissed) return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-50 flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm shadow-lg sm:inset-x-auto sm:right-4 sm:w-80 dark:border-zinc-800 dark:bg-zinc-950">
-      <span className="text-zinc-700 dark:text-zinc-300">
+    <div className="fixed inset-x-4 bottom-4 z-50 flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm shadow-2xl sm:inset-x-auto sm:right-4 sm:w-80">
+      <span className="font-medium text-zinc-700">
         Install PROOFR for quicker access.
       </span>
       <div className="flex shrink-0 gap-2">
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="rounded-md px-2 py-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="rounded-full px-2 py-1 text-zinc-500 hover:text-zinc-700"
         >
           Dismiss
         </button>
@@ -47,7 +47,7 @@ export function InstallPrompt() {
             await deferredPrompt.userChoice;
             setDeferredPrompt(null);
           }}
-          className="rounded-md bg-black px-3 py-1 font-medium text-white dark:bg-white dark:text-black"
+          className="rounded-full bg-brand px-3 py-1.5 font-bold text-white hover:bg-brand-dark"
         >
           Install
         </button>

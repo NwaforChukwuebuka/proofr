@@ -2,6 +2,10 @@
 
 Reflects current state as of this milestone. Overwrite on the next frontend milestone (7) per `handoff.md`'s convention.
 
+## Visual theme
+
+`ui-inspirations-theme/` at the project root holds reference screenshots (Moniepoint-style Nigerian fintech app UI) that weren't part of the original required-reading list but set the intended look. First pass used a generic black/white Tailwind style and missed this; redesigned to match: brand blue (`#0052ff`, defined as `--brand`/`--brand-dark`/`--brand-tint` in `app/globals.css`) as the dominant background/accent color, white rounded-3xl cards floating on blue, bold extrabold headlines, pill-shaped buttons, and a balance-card-style decorative element on the landing page echoing the reference screenshots' account-balance UI. PWA `theme_color`/`background_color` (manifest + viewport) and the app icon were updated to the same blue for consistency across the install/splash experience.
+
 ## Endpoints called
 
 - `POST /api/merchants` — called once, from the signup wizard's final "Submit application" step (`app/signup/page.tsx`), with:
