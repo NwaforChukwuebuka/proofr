@@ -4,7 +4,7 @@
 
 This plan turns the [PRD](PROOFR_MVP_PRD.md)'s Investor Demo Flow into a sequence of real, working milestones — not mocked stubs. Each milestone is done only when the described behavior actually works end-to-end (real Supabase rows, real Monnify sandbox calls, real UI). Built solo/paired, so milestones run sequentially: backend piece of a feature lands, then its frontend, then the next feature.
 
-Stack: Next.js (TypeScript) PWA + Supabase (Postgres/Auth/Storage) + Monnify sandbox, deployed to Vercel from day one so Monnify's webhook has a stable public URL. See [architecture.md](architecture.md) for why this is a single monolith with a TS-only fraud engine.
+Stack: Next.js (TypeScript) PWA + Supabase (Postgres/Auth/Storage) + Monnify sandbox, deployed to Render from day one so Monnify's webhook has a stable public URL. See [architecture.md](architecture.md) for why this is a single monolith with a TS-only fraud engine.
 
 **Legend**: `[ ]` not started · `[~]` in progress · `[x]` done · tag = `(Backend)` / `(Frontend)` / `(Both)`
 
@@ -13,8 +13,8 @@ Stack: Next.js (TypeScript) PWA + Supabase (Postgres/Auth/Storage) + Monnify san
 ## Day 1 — Core pipeline (Merchant → Payment → Revenue)
 
 1. `[ ]` **(Backend) Project scaffold & deploy**
-   Next.js + TS app, Supabase project + schema migration ([data-model.md](data-model.md)), Vercel deploy, env vars wired (Monnify keys, Supabase keys).
-   *Done when*: app is live on a Vercel URL with a working Supabase connection.
+   Next.js + TS app, Supabase project + schema migration ([data-model.md](data-model.md)), Render deploy, env vars wired (Monnify keys, Supabase keys).
+   *Done when*: app is live on a Render URL with a working Supabase connection.
 
 2. `[ ]` **(Backend) Merchant onboarding API**
    Signup, BVN/NIN verification (real call if Monnify/KYC sandbox supports it, else clearly-marked mock), business details, approval workflow, Supabase Auth wiring. See [api-contracts.md](api-contracts.md) `POST /api/merchants`.
@@ -77,7 +77,7 @@ Stack: Next.js (TypeScript) PWA + Supabase (Postgres/Auth/Storage) + Monnify san
     *Done when*: approving a mock loan visibly schedules/applies a simulated repayment.
 
 16. `[ ]` **(Both) Demo rehearsal pass**
-    Walk the full Investor Demo Flow end-to-end on the deployed Vercel URL with Monnify sandbox; fix any broken step.
+    Walk the full Investor Demo Flow end-to-end on the deployed Render URL with Monnify sandbox; fix any broken step.
 
 ---
 

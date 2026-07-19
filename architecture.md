@@ -17,13 +17,13 @@ flowchart LR
     RPT --> DASH[Merchant Dashboard\nNext.js + Supabase Realtime]
     RPT --> LENDER[Lender Portal]
     FF --> ADMIN[Admin Stub]
-    MERCH[Merchant Browser - PWA] <-->|Next.js pages + API routes| APP[Next.js App on Vercel]
+    MERCH[Merchant Browser - PWA] <-->|Next.js pages + API routes| APP[Next.js App on Render]
     APP <--> DB[(Supabase Postgres/Auth/Storage)]
 ```
 
 ## Deploy topology
 
-- **One Vercel project** hosting the Next.js app (frontend pages + API routes/Route Handlers). Deployed from day one so Monnify has a stable HTTPS webhook target — no local-only dev, no ngrok dependency mid-build.
+- **One Render web service** hosting the Next.js app (frontend pages + API routes/Route Handlers). Deployed from day one so Monnify has a stable HTTPS webhook target — no local-only dev, no ngrok dependency mid-build.
 - **One Supabase project** providing Postgres, Auth, and Storage (for report files/exports if needed).
 - **Monnify sandbox** as the only external payment dependency: reserved account issuance API (called from milestone 4) + transaction webhook (received at milestone 5).
 
@@ -39,7 +39,7 @@ flowchart LR
 
 ## Why a monolith, not separate backend/frontend
 
-Next.js API routes serve as the entire backend: webhook receiver, revenue engine, fraud rules, and report generation all live in `/app/api/*` and call Supabase directly. One repo, one deploy, no CORS/token plumbing between two services — not worth the coordination cost on a 2-day build. Split into a separate service only if a future phase needs long-running background jobs beyond what Vercel functions or Supabase Edge Functions/cron can handle.
+Next.js API routes serve as the entire backend: webhook receiver, revenue engine, fraud rules, and report generation all live in `/app/api/*` and call Supabase directly. One repo, one deploy, no CORS/token plumbing between two services — not worth the coordination cost on a 2-day build. Split into a separate service only if a future phase needs long-running background jobs beyond what the Render web service or Supabase Edge Functions/cron can handle.
 
 ## Why the fraud engine is TypeScript, not Python
 
