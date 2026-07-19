@@ -2,6 +2,10 @@
 
 Cross-milestone continuity: what shipped, what's mocked and why, env vars added, and what the next milestone's dev (human or agent) needs to know before touching this code. Append one entry per milestone as it completes — never rewrite past entries, only add to them if a later milestone changes something they assumed.
 
+## Convention: visual theme
+
+Every **frontend** milestone (3, 7, 9, 11, 13, 14) must read every image in `ui-inspirations-theme/` before writing any UI — it's the visual spec (Moniepoint-style Nigerian fintech look: brand-blue backgrounds, white rounded cards, bold headlines, pill buttons, balance-card motifs; see `app/globals.css`'s `--brand`/`--brand-dark`/`--brand-tint` vars from milestone 3 for the established palette). Milestone 3's first pass missed this folder (it isn't referenced from `plan.md`/`architecture.md`) and shipped a generic black/white UI before being redirected — don't repeat that.
+
 ## Convention: `integration.md`
 
 After every **frontend** milestone (3, 7, 9, 11, 13, 14), the frontend dev drops an `integration.md` in the project root (overwrite the previous one — it reflects current state, not history; this log is the history) covering:
