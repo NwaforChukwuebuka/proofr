@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase";
+import { createReservedAccount } from "@/lib/monnify";
 
 export async function POST(
   request: Request,
@@ -21,7 +22,9 @@ export async function POST(
 
   const { data: merchant, error: fetchError } = await supabase
     .from("merchants")
-    .select("id, approval_status")
+    .select(
+      "id, approval_status, business_name, email, monnify_account_number, monnify_account_reference"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -30,6 +33,16 @@ export async function POST(
   }
   if (!merchant) {
     return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
+  }
+
+  // Idempotency: an already-approved merchant with an issued account should
+  // not get a second Monnify reserved account on re-approval.
+  if (merchant.approval_status === "approved" && merchant.monnify_account_number) {
+    return NextResponse.json({
+      merchantId: merchant.id,
+      approvalStatus: merchant.approval_status,
+      monnifyAccountNumber: merchant.monnify_account_number,
+    });
   }
 
   const { data: updated, error: updateError } = await supabase
@@ -48,11 +61,42 @@ export async function POST(
 
   // Milestone 4 hook: issue the Monnify reserved virtual account here and
   // persist monnify_account_number / monnify_account_reference on the row.
-  const monnifyAccountNumber: string | null = null;
+  let monnifyAccountNumber: string | null = null;
+  let monnifyError: string | undefined;
+
+  try {
+    const account = await createReservedAccount({
+      accountReference: `PROOFR-${merchant.id}`,
+      accountName: merchant.business_name,
+      customerEmail: merchant.email,
+      customerName: merchant.business_name,
+    });
+
+    monnifyAccountNumber = account.accountNumber;
+
+    const { error: monnifyUpdateError } = await supabase
+      .from("merchants")
+      .update({
+        monnify_account_number: account.accountNumber,
+        monnify_account_reference: account.reservationReference,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (monnifyUpdateError) {
+      monnifyError = `Account created but failed to persist: ${monnifyUpdateError.message}`;
+      monnifyAccountNumber = null;
+    }
+  } catch (err) {
+    // Approval itself already succeeded above — surface the Monnify
+    // failure explicitly rather than hiding it behind a generic 500.
+    monnifyError = err instanceof Error ? err.message : "Monnify account issuance failed";
+  }
 
   return NextResponse.json({
     merchantId: updated.id,
     approvalStatus: updated.approval_status,
     monnifyAccountNumber,
+    ...(monnifyError ? { monnifyError } : {}),
   });
 }

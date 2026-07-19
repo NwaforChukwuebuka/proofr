@@ -44,23 +44,37 @@ Public signup. No auth.
 ---
 
 ## `POST /api/merchants/:id/approve`
-*Milestone 2 (approval flip only — Monnify account issuance is milestone 4). Implemented in [app/api/merchants/[id]/approve/route.ts](app/api/merchants/[id]/approve/route.ts).*
+*Milestone 2 (approval flip) + Milestone 4 (real Monnify reserved account issuance). Implemented in [app/api/merchants/[id]/approve/route.ts](app/api/merchants/[id]/approve/route.ts), Monnify client in [lib/monnify.ts](lib/monnify.ts).*
 
 **Auth**: header `x-admin-secret: <ADMIN_API_SECRET>` — a minimal shared-secret gate, **not** real admin auth (that's milestone 14). `ADMIN_API_SECRET` is a new env var (see `.env.local.example`); must be set identically in Render's env vars and locally in `.env`.
 
 **Request**: `{}` (body ignored beyond needing to be present)
 
-**Response `200`**
+**Response `200`** (happy path, verified against live Monnify sandbox)
 ```json
-{ "merchantId": "313aaea8-3317-4639-b161-07e152cb96c6", "approvalStatus": "approved", "monnifyAccountNumber": null }
+{ "merchantId": "42b2ebe5-442b-44c4-9a55-0d99447e19ad", "approvalStatus": "approved", "monnifyAccountNumber": "4119733541" }
+```
+
+**Response `200`** (approval succeeded, Monnify issuance failed — partial failure, not hidden behind a 500)
+```json
+{ "merchantId": "...", "approvalStatus": "approved", "monnifyAccountNumber": null, "monnifyError": "Monnify reserved account creation failed: <Monnify's responseMessage>" }
 ```
 
 **Errors**
 - `401` — missing/wrong `x-admin-secret` header.
 - `404` — no merchant with that id.
-- `500` — `ADMIN_API_SECRET` not configured on the server, or the update failed.
+- `500` — `ADMIN_API_SECRET` not configured on the server, or the Supabase update failed.
 
-**Mocked: `monnifyAccountNumber` is always `null`.** This route only flips `approval_status` to `approved`. Real Monnify reserved virtual account issuance is milestone 4's job — the hook point is marked in the route with a comment; wire the real call in right before the `monnifyAccountNumber` variable is set.
+**Idempotency**: if the merchant is already `approved` and already has a `monnify_account_number`, no new Monnify call is made — the existing account number is returned as-is.
+
+**Server-side flow**: flips `approval_status` to `approved` first (approval and account issuance are one API call per `api-contracts.md`, but approval is not rolled back if Monnify fails), then calls `createReservedAccount` in `lib/monnify.ts`:
+1. `POST https://sandbox.monnify.com/api/v1/auth/login` with `Authorization: Basic base64(MONNIFY_API_KEY:MONNIFY_SECRET_KEY)` — token cached in-process, refreshed ~60s before its `expiresIn`.
+2. `POST https://sandbox.monnify.com/api/v1/bank-transfer/reserved-accounts` with `Authorization: Bearer <token>`, `contractCode: MONNIFY_CONTRACT_CODE`, `accountReference: PROOFR-<merchantId>` (deterministic, doubles as a second layer of Monnify-side idempotency), `accountName`/`customerName` from `business_name`, `customerEmail` from the merchant row.
+3. Persists `monnify_account_number` (Monnify's `accountNumber`) and `monnify_account_reference` (Monnify's `reservationReference` — their internal reference, distinct from our `accountReference`) onto the `merchants` row.
+
+**Note on BVN/NIN**: Monnify's V1 reserved-account endpoint treats `customerBvn` as optional (required only later, before a regulated-category merchant can *receive* payments — not at creation time). PROOFR never persists raw BVN/NIN digits (milestone 2's `mockVerifyBvnNin` only stores a verified boolean + hashed `kyc_reference`), so `customerBvn` is omitted from the request. See [[monnify-sandbox-only]].
+
+**Verified against live Monnify sandbox** (not mocked) — see `handoff.md` milestone 4 entry for the local test transcript. One quirk found live: Monnify's docs show the create-reserved-account response nesting the account under an `accounts[]` array, but the actual sandbox response (without `getAllAvailableBanks: true`) returns `accountNumber`/`bankName`/`bankCode` flat on `responseBody` — `lib/monnify.ts` handles both shapes.
 
 ---
 
