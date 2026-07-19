@@ -30,4 +30,7 @@ This entry in `handoff.md` should then get a one-line pointer to that milestone'
 - **Seam left for milestone 4**: the approve route's response always has `monnifyAccountNumber: null`; the hook point to call real Monnify issuance is commented directly above where that variable is set in `app/api/merchants/[id]/approve/route.ts`.
 
 ## Milestone 3 — Merchant onboarding UI
-*Not started. First frontend milestone — see the `integration.md` convention above.*
+
+- Landing page (`app/page.tsx`), a 4-step signup wizard (`app/signup/page.tsx`: account → BVN/NIN verification → business details → review/submit, all rolled into a single `POST /api/merchants` call), a static pending-approval screen, and a `beforeinstallprompt`-driven install banner (`app/install-prompt.tsx`, wired into `app/layout.tsx`).
+- Full detail — endpoint shapes called, a real `api.md` mismatch found (duplicate email returns `422` not the documented `400`, resolved by adapting the frontend to treat any non-2xx generically), client-side assumptions (no polling/realtime, no session persistence, KYC result not distinguishable from the `201` response body yet), and manual browser test notes — in [integration.md](integration.md).
+- **Seam left for milestone 7** (revenue dashboard): if that milestone wants to route a merchant from signup straight into an authenticated dashboard, it'll need to add session handling — this milestone deliberately stops at the static pending screen with no session/JWT persisted client-side.
