@@ -5,16 +5,23 @@ import {
 } from "@/lib/supabase";
 
 /**
- * Milestone 6: gross inflow / verified revenue / trend for a merchant.
+ * Milestone 6: gross inflow / trend for a merchant. Milestone 8: verified
+ * revenue now actually excludes fraud-flagged transactions.
  *
- * "Verified revenue" == "gross inflow" for now: both sum transactions.amount
- * (Monnify's gross amountPaid, not the fee-adjusted settlementAmount buried
- * in raw_payload). The fraud rule engine (milestone 8) doesn't exist yet, so
- * there's nothing in fraud_flags to exclude — see handoff.md milestone 6
- * entry for the full reasoning and what milestone 8 should revisit.
+ * "Gross inflow" is the unfiltered sum of transactions.amount (Monnify's
+ * gross amountPaid). "Verified revenue" excludes any transaction with an
+ * open fraud_flags row, regardless of severity — per fraud-rules.md, all
+ * four rules are high or medium severity, so "open, high or medium" and
+ * "any open flag" are the same filter today; this route implements it as
+ * "any open flag" (rather than hardcoding a severity list) so it stays
+ * correct without a code change if a future rule is ever added at "low"
+ * severity and deliberately excluded. Overridden flags (status:
+ * "overridden", set by milestone 14's admin override — not built yet) do
+ * not exclude a transaction.
  */
 
 interface TransactionRow {
+  id: string;
   amount: number;
   created_at: string;
 }
@@ -81,7 +88,7 @@ export async function GET(
 
   const { data: transactions, error: txError } = await supabase
     .from("transactions")
-    .select("amount, created_at")
+    .select("id, amount, created_at")
     .eq("merchant_id", id)
     .order("created_at", { ascending: true });
 
@@ -91,18 +98,35 @@ export async function GET(
 
   const rows = (transactions ?? []) as TransactionRow[];
 
+  const flaggedTransactionIds = new Set<string>();
+  if (rows.length > 0) {
+    const { data: openFlags, error: flagsError } = await supabase
+      .from("fraud_flags")
+      .select("transaction_id")
+      .eq("status", "open")
+      .in("transaction_id", rows.map((r) => r.id));
+
+    if (flagsError) {
+      return NextResponse.json({ error: flagsError.message }, { status: 500 });
+    }
+
+    for (const f of openFlags ?? []) {
+      flaggedTransactionIds.add(f.transaction_id as string);
+    }
+  }
+
   let grossInflow = 0;
+  let verifiedRevenue = 0;
   const trendMap = new Map<string, number>();
   for (const row of rows) {
     const amount = Number(row.amount);
     grossInflow += amount;
+    if (!flaggedTransactionIds.has(row.id)) {
+      verifiedRevenue += amount;
+    }
     const key = bucketKey(row.created_at, granularity);
     trendMap.set(key, (trendMap.get(key) ?? 0) + amount);
   }
-
-  // No fraud screening exists yet (milestone 8) — verified revenue is
-  // identical to gross inflow until fraud_flags has real data to exclude.
-  const verifiedRevenue = grossInflow;
 
   const trend = Array.from(trendMap.entries())
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

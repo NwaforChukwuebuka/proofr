@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase";
 import { verifyWebhookSignature } from "@/lib/monnify";
+import { runFraudChecks, type TransactionRecord } from "@/lib/fraud";
 
 /**
  * Monnify transaction webhook. Public route — no session, auth is the
@@ -102,14 +103,18 @@ export async function POST(request: Request) {
   const payerName = source?.accountName ?? eventData?.customer?.name ?? null;
   const payerAccount = source?.accountNumber ?? null;
 
-  const { error: insertError } = await supabase.from("transactions").insert({
-    merchant_id: merchant.id,
-    monnify_reference: transactionReference,
-    amount: amountPaid,
-    payer_name: payerName,
-    payer_account: payerAccount,
-    raw_payload: payload,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("transactions")
+    .insert({
+      merchant_id: merchant.id,
+      monnify_reference: transactionReference,
+      amount: amountPaid,
+      payer_name: payerName,
+      payer_account: payerAccount,
+      raw_payload: payload,
+    })
+    .select("id, merchant_id, payer_account, amount, created_at")
+    .single();
 
   if (insertError) {
     // Unique violation on monnify_reference means this is a Monnify retry
@@ -118,6 +123,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, alreadyProcessed: true });
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+
+  // Fraud engine runs synchronously, same process, right after insert, per
+  // architecture.md's diagram — before acking. Rules are lightweight
+  // bounded-window queries/JS logic (lib/fraud.ts), not anything that
+  // should meaningfully slow down the response. merchantPersonalAccountNumber
+  // is always null today: merchants has no such column yet (see lib/fraud.ts
+  // checkSelfFunding doc comment) — this is a documented, correct no-op, not
+  // a bug.
+  try {
+    await runFraudChecks(supabase, inserted as TransactionRecord, null);
+  } catch (fraudError) {
+    // A fraud-engine failure must not block ack'ing a real, already-stored
+    // payment back to Monnify (Monnify would retry and we'd double-process
+    // the transaction insert path unnecessarily). Log loudly instead.
+    console.error(
+      `Fraud engine error for transaction ${inserted.id}:`,
+      fraudError
+    );
   }
 
   return NextResponse.json({ ok: true });

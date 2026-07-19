@@ -116,6 +116,8 @@ Public route — no session. Called directly by Monnify.
 
 **Verified against a live Monnify sandbox payment, not just code-path.** Approved a real test merchant ("suya joint"), got a real reserved account (`4003488430`, Wema Bank) from `lib/monnify.ts`, configured the "Transaction completion" webhook in the Monnify dashboard to `https://proofr.onrender.com/api/webhooks/monnify`, and sent a ₦30,000 transfer via Monnify's Bank Simulator (`https://websim.sdk.monnify.com`). A correctly-shaped row appeared in the live Supabase `transactions` table within ~2 seconds. Re-sent the identical signed payload against the live endpoint afterward and confirmed no duplicate row (same row `id` returned, `alreadyProcessed: true`). Confirmed signature rejection (`401`) on both a tampered body and a missing header, against both local and live Render deployments.
 
+**Milestone 8 update**: after a successful insert (new transaction, not a retry), the route now calls `runFraudChecks` from [lib/fraud.ts](lib/fraud.ts) synchronously before acking — runs the four rules in `fraud-rules.md` against bounded 24h/1h/7-day-baseline windows for the merchant and writes any resulting `fraud_flags` rows. A fraud-engine error is caught and logged, not surfaced as a 500 — a real, already-stored payment must still be ack'd back to Monnify even if fraud scoring fails. The response shape is unchanged (`{ ok: true }` etc.); flags are a side effect, not part of the webhook response. Full rule detail, verification transcript, and the `payer_account`-null / self-funding-identity decisions in `handoff.md`'s milestone 8 entry.
+
 ---
 
 ## `GET /api/merchants/:id/revenue`
@@ -133,7 +135,7 @@ Public route — no session. Called directly by Monnify.
 
 **Errors**: `401` — missing/invalid/expired bearer token. `403` — valid token, but the user is neither the owning merchant nor a lender. `404` — no merchant with that id. `500` — Supabase error.
 
-**"Gross inflow" vs "verified revenue"**: identical for now — both sum `transactions.amount` (Monnify's gross `amountPaid`). No fraud screening exists yet (milestone 8), so "verified" has nothing to exclude yet. Full reasoning in `handoff.md`'s milestone 6 entry.
+**"Gross inflow" vs "verified revenue"** (updated milestone 8): `grossInflow` is the unfiltered sum of `transactions.amount`. `verifiedRevenue` now excludes any transaction with an **open** `fraud_flags` row (any `rule_type`/severity — all four rules are high or medium per `fraud-rules.md`, so this is equivalent to "open, high or medium" today). Transactions whose only flags are `status: "overridden"` are not excluded. Implementation: one extra query fetching `fraud_flags.transaction_id` where `status = 'open'` for the merchant's transaction ids, skipped entirely if the merchant has no transactions. Full reasoning and live verification transcript in `handoff.md`'s milestone 6 and milestone 8 entries.
 
 **Index applied**: `idx_transactions_merchant_created` on `transactions (merchant_id, created_at)` (`supabase/migrations/0002_revenue_indexes.sql`) — run manually by the user against the live Supabase project (the agent's environment couldn't reach the DB directly over raw Postgres TCP).
 
