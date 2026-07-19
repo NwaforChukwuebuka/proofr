@@ -118,6 +118,27 @@ Public route — no session. Called directly by Monnify.
 
 ---
 
+## `GET /api/merchants/:id/revenue`
+*Milestone 6. Implemented in [app/api/merchants/[id]/revenue/route.ts](app/api/merchants/[id]/revenue/route.ts).*
+
+**Auth**: header `Authorization: Bearer <supabase-access-token>` — a real Supabase Auth JWT, verified server-side via `supabase.auth.getUser(token)`. The route then checks the token's user against either the merchant's own `auth_user_id` (owning merchant) or a row in `lenders` matching that `auth_user_id` (any lender — lender-to-merchant scoping is milestone 12's job, not this route's). No bespoke session layer was built; there wasn't one to plug into yet (milestone 3's signup UI persists no client-side session, milestone 12's lender portal doesn't exist), so a caller obtains a token by signing in against Supabase Auth directly (e.g. `supabase.auth.signInWithPassword` or an admin-issued magic link) — same auth users milestones 2/3 already created. Aggregates are computed with the service-role client (RLS is bypassed for the query itself, since the `transactions` RLS policy only covers the owning merchant, not lenders — see `data-model.md`); the route's own bearer-token check is what actually gates access.
+
+**Request**: `GET /api/merchants/:id/revenue?granularity=daily|monthly` (optional query param, defaults to `daily` — not in the frozen contract, additive).
+
+**Response `200`** (real merchant, real Monnify sandbox transaction from milestone 5, `granularity=daily` default)
+```json
+{ "grossInflow": 30000, "verifiedRevenue": 30000, "trend": [{ "period": "2026-07-19", "amount": 30000 }] }
+```
+`period` is `YYYY-MM-DD` for `daily`, `YYYY-MM` for `monthly`.
+
+**Errors**: `401` — missing/invalid/expired bearer token. `403` — valid token, but the user is neither the owning merchant nor a lender. `404` — no merchant with that id. `500` — Supabase error.
+
+**"Gross inflow" vs "verified revenue"**: identical for now — both sum `transactions.amount` (Monnify's gross `amountPaid`). No fraud screening exists yet (milestone 8), so "verified" has nothing to exclude yet. Full reasoning in `handoff.md`'s milestone 6 entry.
+
+**Verified against the live Render deployment and real Supabase data**: queried the real "suya joint" merchant (`27608236-61e7-4a96-afdc-e2d3d872af5c`) with its real milestone-5 sandbox transaction (₦30,000) — response matched exactly. Also seeded three extra `transactions` rows spanning two months (clearly marked `TEST-M6-SEED-*` in `monnify_reference` and `{"test": true}` in `raw_payload`) to verify daily and monthly trend bucketing math, then deleted them afterward — confirmed `grossInflow` returned to ₦30,000 post-cleanup. Confirmed `401` (no token, garbage token), `403` (a different, unrelated merchant's real token against this merchant's id).
+
+---
+
 ## Not yet implemented
 
-Everything else in `api-contracts.md` (`GET /api/merchants/:id/revenue`, reports, lender routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
+Everything else in `api-contracts.md` (reports, lender search/detail routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
