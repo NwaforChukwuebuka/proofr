@@ -83,3 +83,15 @@ As-built API reference (actual request/response examples, auth headers, mocked p
 
 ---
 
+## Day 3 — Credit intelligence pivot
+
+Reframes the product per the PRD's revised Vision (see [PROOFR_MVP_PRD.md](PROOFR_MVP_PRD.md)): the fraud-only `confidence_score` is not a credit score. This phase adds a real repayment-likelihood score on top of the existing pipeline — no new external integrations. Detail in [credit-intelligence-engine.md](credit-intelligence-engine.md).
+
+17. `[x]` **(Backend) Credit intelligence engine v1**
+    `lib/creditScore.ts` — a repayment-likelihood score composed from revenue trend/consistency, account tenure (platform + self-reported), customer repeat-rate, and the existing fraud confidence score. Merchant onboarding captures `personalAccountNumber` (activates the previously-inert `self_funding` fraud rule) and an optional `businessStartDate`. Stored on `reports` as `credit_score`/`credit_score_breakdown`, surfaced on both merchant and lender report endpoints alongside the existing `confidence_score` (not replacing it).
+    *Done when*: a generated report includes a credit score with a component breakdown, `self_funding` can fire against a real captured personal account number, and lender-facing endpoints return the new fields. **Live-verified** against the real Supabase + Monnify sandbox project — see `handoff.md`.
+
+18. `[x]` **(Frontend) Credit score surfaced on report + lender pages**
+    `app/report/[id]/page.tsx`, `app/lender/page.tsx`, `app/lender/merchants/[id]/page.tsx` now render `creditScore`/`creditScoreBreakdown` as the headline figure (with the existing `confidenceScore` relabeled "Fraud confidence score" and kept as a secondary, narrower figure, not replaced).
+    *Done when*: all three pages show the credit score and its component breakdown when available. Data path confirmed correct against real seeded API responses; full interactive click-through not possible in this environment (no browser-automation tool available — same limitation as milestone 11).
+

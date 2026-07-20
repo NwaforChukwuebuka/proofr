@@ -15,6 +15,7 @@ interface SearchResult {
   merchantId: string;
   businessName: string;
   confidenceScore: number | null;
+  creditScore: number | null;
 }
 
 function scoreBadge(score: number | null) {
@@ -173,7 +174,7 @@ export default function LenderPage() {
                 <p className="text-sm text-zinc-400">No merchants matched.</p>
               ) : (
                 results.map((r) => {
-                  const badge = scoreBadge(r.confidenceScore);
+                  const creditBadge = scoreBadge(r.creditScore);
                   return (
                     <Link
                       key={r.merchantId}
@@ -185,13 +186,13 @@ export default function LenderPage() {
                           {r.businessName}
                         </p>
                         <p className="mt-0.5 text-xs text-zinc-400">
-                          Revenue confidence score
+                          Credit score
                         </p>
                       </div>
                       <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${badge.className}`}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${creditBadge.className}`}
                       >
-                        {badge.label}
+                        {creditBadge.label}
                       </span>
                     </Link>
                   );

@@ -5,6 +5,7 @@ import {
 } from "@/lib/supabase";
 import { computeRevenueSummary } from "@/lib/revenue";
 import { computeConfidenceScore, type FlagForScoring } from "@/lib/confidence";
+import { computeCreditScore } from "@/lib/creditScore";
 import type { RuleType } from "@/lib/fraud";
 import { buildReportResponse, getLatestReportForBearerToken } from "@/lib/reports";
 
@@ -47,7 +48,9 @@ async function authenticateAsOwningMerchant(
   const supabase = createServiceRoleSupabaseClient();
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id, auth_user_id, business_name, bvn_nin_verified, approval_status, monnify_account_number")
+    .select(
+      "id, auth_user_id, business_name, bvn_nin_verified, approval_status, monnify_account_number, created_at, business_started_at"
+    )
     .eq("id", merchantId)
     .maybeSingle();
 
@@ -62,6 +65,19 @@ async function authenticateAsOwningMerchant(
   }
 
   return { supabase, merchant };
+}
+
+async function fetchTransactionsForCreditScore(
+  supabase: ReturnType<typeof createServiceRoleSupabaseClient>,
+  merchantId: string
+) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("payer_account")
+    .eq("merchant_id", merchantId);
+
+  if (error) throw error;
+  return (data ?? []) as { payer_account: string | null }[];
 }
 
 async function fetchOpenFlagsForMerchant(
@@ -88,12 +104,13 @@ export async function POST(
 
   const auth = await authenticateAsOwningMerchant(request, id);
   if ("error" in auth) return auth.error;
-  const { supabase } = auth;
+  const { supabase, merchant } = auth;
 
   try {
-    const [revenueSummary, openFlags] = await Promise.all([
+    const [revenueSummary, openFlags, creditScoreTransactions] = await Promise.all([
       computeRevenueSummary(supabase, id, "daily"),
       fetchOpenFlagsForMerchant(supabase, id),
+      fetchTransactionsForCreditScore(supabase, id),
     ]);
 
     const scoringInput: FlagForScoring[] = openFlags.map((f) => ({
@@ -102,6 +119,14 @@ export async function POST(
       amount: Number(f.transactions?.amount ?? 0),
     }));
     const confidenceScore = computeConfidenceScore(scoringInput);
+
+    const creditScoreResult = computeCreditScore({
+      trend: revenueSummary.trend,
+      accountCreatedAt: merchant.created_at,
+      businessStartedAt: merchant.business_started_at,
+      transactions: creditScoreTransactions,
+      confidenceScore,
+    });
 
     const fraudFlagsSnapshot = openFlags.map((f) => ({
       id: f.id,
@@ -123,6 +148,8 @@ export async function POST(
         revenue_summary: { grossInflow, verifiedRevenue },
         trend_data: trend,
         confidence_score: confidenceScore,
+        credit_score: creditScoreResult.score,
+        credit_score_breakdown: creditScoreResult.breakdown,
         fraud_flags_snapshot: fraudFlagsSnapshot,
       })
       .select("id, generated_at")
@@ -163,7 +190,9 @@ export async function GET(
 
   const { data: report, error: reportError } = await supabase
     .from("reports")
-    .select("id, merchant_id, revenue_summary, trend_data, confidence_score, fraud_flags_snapshot, generated_at")
+    .select(
+      "id, merchant_id, revenue_summary, trend_data, confidence_score, credit_score, credit_score_breakdown, fraud_flags_snapshot, generated_at"
+    )
     .eq("id", reportId)
     .maybeSingle();
 

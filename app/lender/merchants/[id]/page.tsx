@@ -13,6 +13,7 @@ import {
   type Severity,
   type FlagStatus,
 } from "@/lib/fraud-labels";
+import type { CreditScoreBreakdown } from "@/lib/creditScore";
 
 interface MerchantRow {
   id: string;
@@ -32,8 +33,53 @@ interface Report {
   profile: { businessName: string; approvalStatus: string; hasVirtualAccount: boolean };
   revenueSummary: { grossInflow: number; verifiedRevenue: number };
   confidenceScore: number;
+  creditScore: number | null;
+  creditScoreBreakdown: CreditScoreBreakdown | null;
   fraudFlags: ReportFlag[];
   generatedAt: string;
+}
+
+const TREND_DIRECTION_LABELS: Record<CreditScoreBreakdown["revenueTrend"]["direction"], string> = {
+  growing: "Growing",
+  stable: "Stable",
+  declining: "Declining",
+  insufficient_data: "Not enough history yet",
+};
+
+function creditScoreComponents(breakdown: CreditScoreBreakdown) {
+  return [
+    { label: "Revenue trend", max: 25, score: breakdown.revenueTrend.score, detail: TREND_DIRECTION_LABELS[breakdown.revenueTrend.direction] },
+    {
+      label: "Revenue consistency",
+      max: 25,
+      score: breakdown.revenueConsistency.score,
+      detail: breakdown.revenueConsistency.coefficientOfVariation === null ? "Not enough history yet" : "Day-to-day steadiness of inflow",
+    },
+    {
+      label: "Account tenure",
+      max: 20,
+      score: breakdown.tenure.score,
+      detail: `${breakdown.tenure.platformDays} day${breakdown.tenure.platformDays === 1 ? "" : "s"} on PROOFR${
+        breakdown.tenure.selfReportedDays !== null ? `, ${breakdown.tenure.selfReportedDays} self-reported` : ""
+      }`,
+    },
+    {
+      label: "Customer behavior",
+      max: 20,
+      score: breakdown.customerBehavior.score,
+      detail: `${breakdown.customerBehavior.uniqueCustomers} unique customer${breakdown.customerBehavior.uniqueCustomers === 1 ? "" : "s"}${
+        breakdown.customerBehavior.repeatCustomerRate !== null
+          ? `, ${Math.round(breakdown.customerBehavior.repeatCustomerRate * 100)}% repeat`
+          : ""
+      }`,
+    },
+    {
+      label: "Fraud confidence",
+      max: 10,
+      score: breakdown.fraudConfidence.score,
+      detail: `From the ${breakdown.fraudConfidence.confidenceScore}/100 fraud confidence score below`,
+    },
+  ];
 }
 
 interface RepaymentPeriod {
@@ -217,7 +263,7 @@ export default function LenderMerchantPage() {
             </div>
           ) : !report ? (
             <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <p className="text-xs font-medium text-zinc-400">Revenue confidence score</p>
+              <p className="text-xs font-medium text-zinc-400">Credit score</p>
               <p className="mt-2 text-sm text-zinc-500">
                 This merchant hasn&apos;t generated a Proof-of-Revenue report yet
                 — no score or revenue summary is available.
@@ -225,11 +271,48 @@ export default function LenderMerchantPage() {
             </div>
           ) : (
             <>
+              {report.creditScore !== null && report.creditScoreBreakdown ? (
+                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
+                  <p className="text-xs font-medium text-zinc-400">Credit score</p>
+                  <p className={`mt-2 text-6xl font-extrabold ${confidenceTone(report.creditScore).ring}`}>
+                    {report.creditScore}
+                  </p>
+                  <span
+                    className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                      confidenceTone(report.creditScore).bg
+                    } ${confidenceTone(report.creditScore).ring}`}
+                  >
+                    {confidenceTone(report.creditScore).label}
+                  </span>
+                  <p className="mt-3 text-xs text-zinc-400">
+                    Repayment-likelihood signal — how likely this merchant is to repay a loan, not just how much revenue they report.
+                  </p>
+                  <div className="mt-4 space-y-2 text-left">
+                    {creditScoreComponents(report.creditScoreBreakdown).map((c) => (
+                      <div key={c.label} className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-zinc-700">{c.label}</p>
+                          <p className="truncate text-[11px] text-zinc-400">{c.detail}</p>
+                        </div>
+                        <p className="shrink-0 text-xs font-semibold text-zinc-500">
+                          {Math.round(c.score * 10) / 10}/{c.max}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
+                  <p className="text-xs font-medium text-zinc-400">Credit score</p>
+                  <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
+                </div>
+              )}
+
               <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
                 <p className="text-xs font-medium text-zinc-400">
-                  Revenue confidence score
+                  Fraud confidence score
                 </p>
-                <p className={`mt-2 text-6xl font-extrabold ${tone!.ring}`}>
+                <p className={`mt-2 text-4xl font-extrabold ${tone!.ring}`}>
                   {report.confidenceScore}
                 </p>
                 <span
@@ -237,6 +320,9 @@ export default function LenderMerchantPage() {
                 >
                   {tone!.label}
                 </span>
+                <p className="mt-3 text-xs text-zinc-400">
+                  Measures only whether this transaction history looks suspicious.
+                </p>
               </div>
 
               <div className="rounded-3xl bg-white p-6 shadow-2xl">

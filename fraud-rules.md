@@ -22,6 +22,8 @@ having count(*) >= 3
 
 **Trigger**: `transactions.payer_account` or payer identity matches the merchant's own KYC-verified BVN/NIN or a known personal account on file.
 
+Was always a documented no-op through milestone 16 — `merchants` had no personal-account-number column. Milestone 17 added `merchants.personal_account_number` (optional, captured at signup; see [data-model.md](data-model.md)) so this rule now fires against real data whenever a merchant provided one. No rule-logic change was needed — `lib/fraud.ts`'s `checkSelfFunding` was always implemented against this real (if previously absent) value.
+
 ```ts
 if (transaction.payerIdentity === merchant.kycIdentity) {
   flag("self_funding", "high");
@@ -73,4 +75,4 @@ where recent.cnt >= 3 * baseline.avg_cnt or recent.vol >= 3 * baseline.avg_vol
 
 ## Confidence score
 
-Reports (milestone 10) compute a `confidence_score` starting at **100** and subtracting each open flag's penalty (floor at 0). Overridden flags (admin cleared them, milestone 14) do not count against the score. This score is what appears on the Proof-of-Revenue report for lenders.
+Reports (milestone 10) compute a `confidence_score` starting at **100** and subtracting each open flag's penalty (floor at 0). Overridden flags (admin cleared them, milestone 14) do not count against the score. This score appears on the Proof-of-Revenue report for lenders, alongside milestone 17's broader `credit_score` — see [credit-intelligence-engine.md](credit-intelligence-engine.md), where this fraud-only score is reused as one input among several, not replaced.

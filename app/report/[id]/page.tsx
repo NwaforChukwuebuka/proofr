@@ -14,6 +14,7 @@ import {
   type Severity,
   type FlagStatus,
 } from "@/lib/fraud-labels";
+import type { CreditScoreBreakdown } from "@/lib/creditScore";
 
 interface ReportFlag {
   id: string;
@@ -39,6 +40,8 @@ interface Report {
   revenueSummary: { grossInflow: number; verifiedRevenue: number };
   trendData: { period: string; amount: number }[];
   confidenceScore: number;
+  creditScore: number | null;
+  creditScoreBreakdown: CreditScoreBreakdown | null;
   fraudFlags: ReportFlag[];
   generatedAt: string;
 }
@@ -47,6 +50,61 @@ function confidenceTone(score: number) {
   if (score >= 80) return { ring: "text-green-600", bg: "bg-green-50", label: "Strong" };
   if (score >= 50) return { ring: "text-amber-600", bg: "bg-amber-50", label: "Fair" };
   return { ring: "text-red-600", bg: "bg-red-50", label: "Weak" };
+}
+
+const TREND_DIRECTION_LABELS: Record<CreditScoreBreakdown["revenueTrend"]["direction"], string> = {
+  growing: "Growing",
+  stable: "Stable",
+  declining: "Declining",
+  insufficient_data: "Not enough history yet",
+};
+
+function creditScoreComponents(breakdown: CreditScoreBreakdown) {
+  return [
+    {
+      label: "Revenue trend",
+      max: 25,
+      score: breakdown.revenueTrend.score,
+      detail: TREND_DIRECTION_LABELS[breakdown.revenueTrend.direction],
+    },
+    {
+      label: "Revenue consistency",
+      max: 25,
+      score: breakdown.revenueConsistency.score,
+      detail:
+        breakdown.revenueConsistency.coefficientOfVariation === null
+          ? "Not enough history yet"
+          : "Day-to-day steadiness of inflow",
+    },
+    {
+      label: "Account tenure",
+      max: 20,
+      score: breakdown.tenure.score,
+      detail: `${breakdown.tenure.platformDays} day${breakdown.tenure.platformDays === 1 ? "" : "s"} on PROOFR${
+        breakdown.tenure.selfReportedDays !== null
+          ? `, ${breakdown.tenure.selfReportedDays} self-reported`
+          : ""
+      }`,
+    },
+    {
+      label: "Customer behavior",
+      max: 20,
+      score: breakdown.customerBehavior.score,
+      detail: `${breakdown.customerBehavior.uniqueCustomers} unique customer${
+        breakdown.customerBehavior.uniqueCustomers === 1 ? "" : "s"
+      }${
+        breakdown.customerBehavior.repeatCustomerRate !== null
+          ? `, ${Math.round(breakdown.customerBehavior.repeatCustomerRate * 100)}% repeat`
+          : ""
+      }`,
+    },
+    {
+      label: "Fraud confidence",
+      max: 10,
+      score: breakdown.fraudConfidence.score,
+      detail: `From the ${breakdown.fraudConfidence.confidenceScore}/100 fraud confidence score below`,
+    },
+  ];
 }
 
 export default function ReportPage() {
@@ -231,12 +289,52 @@ export default function ReportPage() {
         </p>
 
         <div className="mt-4 space-y-4 print:space-y-3">
-          {/* Confidence score — headline number */}
-          <div className={`rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200 sm:p-8`}>
+          {/* Credit score — headline number, the repayment-likelihood signal */}
+          {report.creditScore !== null && report.creditScoreBreakdown ? (
+            <div className="rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200 sm:p-8">
+              <p className="text-xs font-medium text-zinc-400">Credit score</p>
+              <p className={`mt-2 text-6xl font-extrabold ${confidenceTone(report.creditScore).ring}`}>
+                {report.creditScore}
+              </p>
+              <span
+                className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                  confidenceTone(report.creditScore).bg
+                } ${confidenceTone(report.creditScore).ring}`}
+              >
+                {confidenceTone(report.creditScore).label}
+              </span>
+              <p className="mt-3 text-xs text-zinc-400">
+                Repayment-likelihood signal — how likely this merchant is to repay a loan, not just how much revenue they report.
+              </p>
+              <div className="mt-4 space-y-2 text-left">
+                {creditScoreComponents(report.creditScoreBreakdown).map((c) => (
+                  <div key={c.label} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-zinc-700">{c.label}</p>
+                      <p className="truncate text-[11px] text-zinc-400">{c.detail}</p>
+                    </div>
+                    <p className="shrink-0 text-xs font-semibold text-zinc-500">
+                      {Math.round(c.score * 10) / 10}/{c.max}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200">
+              <p className="text-xs font-medium text-zinc-400">Credit score</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Not available for this report — generate a fresh snapshot to compute it.
+              </p>
+            </div>
+          )}
+
+          {/* Fraud confidence score — narrower, fraud-only signal */}
+          <div className="rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200 sm:p-8">
             <p className="text-xs font-medium text-zinc-400">
-              Revenue confidence score
+              Fraud confidence score
             </p>
-            <p className={`mt-2 text-6xl font-extrabold ${tone.ring}`}>
+            <p className={`mt-2 text-4xl font-extrabold ${tone.ring}`}>
               {report.confidenceScore}
             </p>
             <span
@@ -244,6 +342,9 @@ export default function ReportPage() {
             >
               {tone.label}
             </span>
+            <p className="mt-3 text-xs text-zinc-400">
+              Measures only whether this transaction history looks suspicious — see the credit score above for the broader repayment signal.
+            </p>
           </div>
 
           {/* Profile + verification */}

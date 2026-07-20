@@ -1,6 +1,6 @@
 # PROOFR — Data Model (Supabase / Postgres)
 
-Supports [plan.md](plan.md) milestones 1–15. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
+Supports [plan.md](plan.md) milestones 1–17. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
 
 ## `merchants`
 
@@ -15,6 +15,8 @@ Supports [plan.md](plan.md) milestones 1–15. All tables use `uuid` primary key
 | `approval_status` | text | `pending` \| `approved` \| `rejected` |
 | `monnify_account_number` | text, nullable | Set at milestone 4 |
 | `monnify_account_reference` | text, nullable | Monnify's internal reference |
+| `personal_account_number` | text, nullable | Milestone 17. Optional, captured at signup. Activates `lib/fraud.ts`'s `self_funding` rule (previously always inert — see [fraud-rules.md](fraud-rules.md)) |
+| `business_started_at` | date, nullable | Milestone 17. Self-reported, unverified business age — distinct from `created_at` (platform tenure). See [credit-intelligence-engine.md](credit-intelligence-engine.md) |
 | `created_at`, `updated_at` | timestamptz | |
 
 ## `transactions`
@@ -54,6 +56,8 @@ Snapshot record, not live-computed on every view (regenerated on demand, milesto
 | `revenue_summary` | jsonb | Gross inflow, verified revenue |
 | `trend_data` | jsonb | Daily/monthly series |
 | `confidence_score` | numeric | Penalized by open fraud flags — see [fraud-rules.md](fraud-rules.md) |
+| `credit_score` | numeric, nullable | Milestone 17. Repayment-likelihood signal — see [credit-intelligence-engine.md](credit-intelligence-engine.md). Distinct from and not derived by replacing `confidence_score` |
+| `credit_score_breakdown` | jsonb, nullable | Milestone 17. Named component contributions to `credit_score` |
 | `fraud_flags_snapshot` | jsonb | Flags at time of generation |
 | `generated_at` | timestamptz | |
 

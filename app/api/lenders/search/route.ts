@@ -6,15 +6,19 @@ import { authenticateAsLender } from "@/lib/lender-auth";
  * or an exact merchant id (when `query` is a valid UUID) — covers
  * api-contracts.md's "by name/ID" in one endpoint.
  *
- * `confidenceScore`: not a merchants column — it only exists on a generated
- * `reports` row. A merchant with no report yet has no score to report.
- * Decision: include the merchant with `confidenceScore: null` rather than
- * omitting them or defaulting to a number (100 would misrepresent "never
- * scored" as "scored perfectly clean") — the lender UI (milestone 13) can
- * render null as "not yet scored." Uses each merchant's most recently
- * generated report (`order by generated_at desc`, first row per merchant
- * id kept in JS) rather than a live-recomputed score, matching how
- * GET /api/merchants/:id/report also serves the last-generated snapshot.
+ * `confidenceScore`/`creditScore`: not merchants columns — they only exist
+ * on a generated `reports` row. A merchant with no report yet has no score
+ * to report. Decision: include the merchant with both scores `null` rather
+ * than omitting them or defaulting to a number (100 would misrepresent
+ * "never scored" as "scored perfectly clean") — the lender UI (milestone
+ * 13, extended milestone 17) can render null as "not yet scored." Uses
+ * each merchant's most recently generated report (`order by generated_at
+ * desc`, first row per merchant id kept in JS) rather than a
+ * live-recomputed score, matching how GET /api/merchants/:id/report also
+ * serves the last-generated snapshot. `creditScore` (milestone 17) is the
+ * repayment-likelihood signal — see credit-intelligence-engine.md —
+ * distinct from `confidenceScore`'s fraud-only signal; both are surfaced
+ * so a lender isn't shown just the narrower figure.
  *
  * Merchant lookup is two separate parameterized queries (ilike + eq)
  * merged in JS, not a single .or() filter string, so a query containing
@@ -56,27 +60,37 @@ export async function GET(request: Request) {
     }
 
     const merchantIds = [...merchantsById.keys()];
-    const latestScoreByMerchant = new Map<string, number>();
+    const latestScoresByMerchant = new Map<
+      string,
+      { confidenceScore: number; creditScore: number | null }
+    >();
 
     if (merchantIds.length > 0) {
       const { data: reports, error: reportsError } = await supabase
         .from("reports")
-        .select("merchant_id, confidence_score, generated_at")
+        .select("merchant_id, confidence_score, credit_score, generated_at")
         .in("merchant_id", merchantIds)
         .order("generated_at", { ascending: false });
       if (reportsError) throw reportsError;
       for (const r of reports ?? []) {
-        if (!latestScoreByMerchant.has(r.merchant_id)) {
-          latestScoreByMerchant.set(r.merchant_id, r.confidence_score);
+        if (!latestScoresByMerchant.has(r.merchant_id)) {
+          latestScoresByMerchant.set(r.merchant_id, {
+            confidenceScore: r.confidence_score,
+            creditScore: r.credit_score,
+          });
         }
       }
     }
 
-    const results = [...merchantsById.values()].map((m) => ({
-      merchantId: m.id,
-      businessName: m.business_name,
-      confidenceScore: latestScoreByMerchant.get(m.id) ?? null,
-    }));
+    const results = [...merchantsById.values()].map((m) => {
+      const scores = latestScoresByMerchant.get(m.id);
+      return {
+        merchantId: m.id,
+        businessName: m.business_name,
+        confidenceScore: scores?.confidenceScore ?? null,
+        creditScore: scores?.creditScore ?? null,
+      };
+    });
 
     return NextResponse.json(results);
   } catch (err) {

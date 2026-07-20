@@ -8,6 +8,8 @@ interface SignupBody {
   password?: unknown;
   businessName?: unknown;
   bvnOrNin?: unknown;
+  personalAccountNumber?: unknown;
+  businessStartDate?: unknown;
 }
 
 export async function POST(request: Request) {
@@ -21,7 +23,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const { phone, email, password, businessName, bvnOrNin } = body;
+  const {
+    phone,
+    email,
+    password,
+    businessName,
+    bvnOrNin,
+    personalAccountNumber,
+    businessStartDate,
+  } = body;
 
   if (
     typeof phone !== "string" ||
@@ -45,6 +55,27 @@ export async function POST(request: Request) {
   if (bvnOrNin !== undefined && typeof bvnOrNin !== "string") {
     return NextResponse.json(
       { error: "bvnOrNin must be a string if provided" },
+      { status: 400 }
+    );
+  }
+
+  if (
+    personalAccountNumber !== undefined &&
+    typeof personalAccountNumber !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "personalAccountNumber must be a string if provided" },
+      { status: 400 }
+    );
+  }
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (
+    businessStartDate !== undefined &&
+    (typeof businessStartDate !== "string" || !DATE_RE.test(businessStartDate))
+  ) {
+    return NextResponse.json(
+      { error: "businessStartDate must be a YYYY-MM-DD string if provided" },
       { status: 400 }
     );
   }
@@ -81,6 +112,8 @@ export async function POST(request: Request) {
       approval_status: "pending",
       bvn_nin_verified: kyc?.verified ?? false,
       kyc_reference: kyc?.reference ?? null,
+      personal_account_number: personalAccountNumber ?? null,
+      business_started_at: businessStartDate ?? null,
     })
     .select("id, approval_status")
     .single();

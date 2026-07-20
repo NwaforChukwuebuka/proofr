@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
   const { data: merchant, error: merchantLookupError } = await supabase
     .from("merchants")
-    .select("id")
+    .select("id, personal_account_number")
     .eq("monnify_account_number", accountNumber)
     .maybeSingle();
 
@@ -129,12 +129,17 @@ export async function POST(request: Request) {
   // Fraud engine runs synchronously, same process, right after insert, per
   // architecture.md's diagram — before acking. Rules are lightweight
   // bounded-window queries/JS logic (lib/fraud.ts), not anything that
-  // should meaningfully slow down the response. merchantPersonalAccountNumber
-  // is always null today: merchants has no such column yet (see lib/fraud.ts
-  // checkSelfFunding doc comment) — this is a documented, correct no-op, not
-  // a bug.
+  // should meaningfully slow down the response. Milestone 17:
+  // merchant.personal_account_number is now a real (optional) captured
+  // value — self_funding fires whenever it's set and matches the payer,
+  // and remains a correct no-op when it's null (merchant never provided
+  // one at onboarding).
   try {
-    await runFraudChecks(supabase, inserted as TransactionRecord, null);
+    await runFraudChecks(
+      supabase,
+      inserted as TransactionRecord,
+      merchant.personal_account_number ?? null
+    );
   } catch (fraudError) {
     // A fraud-engine failure must not block ack'ing a real, already-stored
     // payment back to Monnify (Monnify would retry and we'd double-process

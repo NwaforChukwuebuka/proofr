@@ -24,6 +24,7 @@ Public signup. No auth.
 - `phone`, `email`, `password`, `businessName` are required, non-empty strings.
 - `phone` must be **E.164** format (e.g. `+2348012345678`) — Supabase Auth rejects other formats with a 400.
 - `bvnOrNin` is **optional**, not in the frozen contract — added so KYC can run inline at signup instead of needing a separate endpoint (no new DB columns were added; see `data-model.md`). Omit it to sign up with `bvn_nin_verified: false`.
+- **Milestone 17 additions**, both optional, not in the frozen contract: `personalAccountNumber` (string) — the merchant's own personal bank account number, stored on `merchants.personal_account_number`. This is the identity value `lib/fraud.ts`'s `checkSelfFunding` rule always compared against `null` before (see `handoff.md` milestone 8) — providing it activates that rule against real data. `businessStartDate` (`YYYY-MM-DD` string) — self-reported business age, stored on `merchants.business_started_at`, used as an unverified secondary tenure signal by `lib/creditScore.ts` (see `credit-intelligence-engine.md`). Omitting either leaves the prior no-op/absent behavior unchanged.
 
 **Response `201`**
 ```json
@@ -157,7 +158,9 @@ Public route — no session. Called directly by Monnify.
 
 **Errors**: `401` — missing/invalid bearer token. `403` — valid token belonging to a different merchant (or a lender — `POST` has no lender path). `404` — no merchant with that id. `500` — Supabase error.
 
-**Server-side flow**: runs `computeRevenueSummary` (grossInflow/verifiedRevenue/trend, daily granularity) and a fetch of open `fraud_flags` joined to their `transactions` (for `payer_account`/`amount`) in parallel, computes `confidenceScore` via `computeConfidenceScore`, then inserts one `reports` row: `revenue_summary: { grossInflow, verifiedRevenue }`, `trend_data` (the trend array), `confidence_score`, `fraud_flags_snapshot` (raw open-flag rows plus their transaction's `payer_account`/`amount`, per milestone 9's note that plain-language labels are a display concern, not a snapshot concern).
+**Server-side flow**: runs `computeRevenueSummary` (grossInflow/verifiedRevenue/trend, daily granularity), a fetch of open `fraud_flags` joined to their `transactions` (for `payer_account`/`amount`), and (milestone 17) a fetch of all the merchant's transactions' `payer_account` values, in parallel; computes `confidenceScore` via `computeConfidenceScore`, then `creditScore`/`creditScoreBreakdown` via `lib/creditScore.ts`'s `computeCreditScore` (inputs: the trend array, `merchants.created_at`, `merchants.business_started_at`, the transaction payer_accounts, and `confidenceScore` itself — see `credit-intelligence-engine.md`), then inserts one `reports` row: `revenue_summary: { grossInflow, verifiedRevenue }`, `trend_data` (the trend array), `confidence_score`, `credit_score`, `credit_score_breakdown`, `fraud_flags_snapshot` (raw open-flag rows plus their transaction's `payer_account`/`amount`, per milestone 9's note that plain-language labels are a display concern, not a snapshot concern).
+
+**Milestone 17 note**: `creditScore` (0-100) and its `creditScoreBreakdown` are a separate, broader repayment-likelihood signal, not a replacement for `confidenceScore`'s narrower fraud-only signal — both are stored and both are returned by `GET`, below. **Live-verified** against the local dev server hitting the live Supabase + Monnify sandbox project: a real seeded merchant with `personalAccountNumber`/`businessStartDate` produced a real `self_funding` fraud flag and a real, correctly-shaped `creditScore`/`creditScoreBreakdown` on generation. Full transcript in `handoff.md`'s milestone 17 entry. Not yet re-verified against the deployed Render URL — do that before the investor demo.
 
 **Confidence score grouping decision** (the seam milestone 8 flagged): `fraud-rules.md` words penalties per *distinct triggering group* (circular_transfer: per payer; identical_transfers: per payer+amount group), but `lib/fraud.ts` writes one flag row per rule per qualifying transaction. `lib/confidence.ts` dedupes open flags into groups before penalizing — `circular_transfer` grouped by `payer_account`, `identical_transfers` grouped by `payer_account + amount`, `self_funding` and `velocity_spike` each collapsed to a single flat deduction regardless of row count (per `fraud-rules.md`'s "single occurrence is enough" / merchant-wide-check wording). Score starts at 100, floors at 0. Only `status: "open"` flags count — `overridden` flags are excluded entirely from both the score and the snapshot.
 
@@ -183,11 +186,19 @@ Public route — no session. Called directly by Monnify.
   "revenueSummary": { "grossInflow": 77000, "verifiedRevenue": 55000 },
   "trendData": [{ "period": "2026-07-19", "amount": 77000 }],
   "confidenceScore": 60,
+  "creditScore": 71,
+  "creditScoreBreakdown": {
+    "revenueTrend": { "score": 20, "direction": "stable" },
+    "revenueConsistency": { "score": 18.4, "coefficientOfVariation": 0.264 },
+    "tenure": { "score": 9.2, "platformDays": 224, "selfReportedDays": null },
+    "customerBehavior": { "score": 17, "uniqueCustomers": 12, "repeatCustomerRate": 0.5, "payerAccountCoverage": 0.83 },
+    "fraudConfidence": { "score": 6, "confidenceScore": 60 }
+  },
   "fraudFlags": [ { "id": "...", "rule_type": "identical_transfers", "severity": "medium", "status": "open", "transaction_id": "...", "payer_account": "...", "amount": 1000, "created_at": "..." } ],
   "generatedAt": "2026-07-19T23:48:48.740099+00:00"
 }
 ```
-`profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is.
+`profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is. `creditScore`/`creditScoreBreakdown` (milestone 17) shown above are illustrative example numbers, not a literal copy-paste of the live-verified run's real output — see `handoff.md`'s milestone 17 entry for the actual real numbers observed (`creditScore: 23`, driven by a brand-new merchant with only one transaction — a low score is the *correct* output for that thin a history, not a bug).
 
 **Milestone 11 addition**: `reportId` (the report's own row id) was added to this response — it was missing from the original milestone 10 shape, and without it the frontend's "my latest report" bearer-token fetch had no way to construct a `?reportId=` share link. Both the latest-report query and the specific-`reportId` query already selected `id`, so this was a one-line addition to `buildReportResponse`, not a new query. See `handoff.md`'s milestone 11 entry.
 
@@ -207,10 +218,10 @@ Public route — no session. Called directly by Monnify.
 **Response `200`**
 ```json
 [
-  { "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "businessName": "TEST-M12-SEED merchant", "confidenceScore": 100 }
+  { "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "businessName": "TEST-M12-SEED merchant", "confidenceScore": 100, "creditScore": 82 }
 ]
 ```
-`confidenceScore` is `null` for a merchant with no `reports` row yet (deliberate — not omitted, not defaulted to `100`; see `handoff.md`'s milestone 12 entry for why). For a merchant with one or more reports, it's the `confidence_score` of that merchant's most recently generated report.
+`confidenceScore`/`creditScore` are both `null` for a merchant with no `reports` row yet (deliberate — not omitted, not defaulted; see `handoff.md`'s milestone 12 entry for the original `confidenceScore` reasoning, extended identically to `creditScore` in milestone 17). For a merchant with one or more reports, both come from that merchant's most recently generated report.
 
 **Errors**: `401` — missing/invalid bearer token. `400` — missing `query`. `403` — valid token, but no `lenders` row for that user.
 
