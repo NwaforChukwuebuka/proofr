@@ -113,24 +113,19 @@ export const openApiSpec = {
         in: "header",
         required: true,
         schema: { type: "string" },
-        description:
-          "Value of ADMIN_API_SECRET. Paste here (or use Authorize → AdminSecret).",
       },
       PublicApiKeyHeader: {
         name: "x-api-key",
         in: "header",
         required: true,
         schema: { type: "string", example: "proofr_pk_…" },
-        description:
-          "Create via POST /api/lenders/api-keys after lender login. Copy the one-time `apiKey` from that response.",
       },
       MonnifySignatureHeader: {
         name: "monnify-signature",
         in: "header",
         required: true,
         schema: { type: "string" },
-        description:
-          "Hex HMAC-SHA512 of the exact raw JSON body using MONNIFY_SECRET_KEY.",
+        description: "HMAC-SHA512 hex digest of the raw body (MONNIFY_SECRET_KEY).",
       },
     },
   },
@@ -139,7 +134,6 @@ export const openApiSpec = {
       post: {
         tags: ["Auth"],
         summary: "Login",
-        description: "Returns a Bearer accessToken for merchant or lender routes.",
         requestBody: {
           required: true,
           content: {
@@ -216,8 +210,6 @@ export const openApiSpec = {
       post: {
         tags: ["Merchants"],
         summary: "Merchant signup",
-        description:
-          "Creates Auth user + merchants row. Does not return a JWT — sign in via Supabase afterward.",
         requestBody: {
           required: true,
           content: {
