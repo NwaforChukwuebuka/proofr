@@ -6,6 +6,7 @@ import {
 import { computeRevenueSummary } from "@/lib/revenue";
 import { computeConfidenceScore, type FlagForScoring } from "@/lib/confidence";
 import type { RuleType } from "@/lib/fraud";
+import { buildReportResponse, getLatestReportForBearerToken } from "@/lib/reports";
 
 /**
  * Milestone 10: Proof-of-Revenue report generation. Assembles the milestone
@@ -154,63 +155,11 @@ export async function GET(
   const url = new URL(request.url);
   const reportId = url.searchParams.get("reportId");
 
-  const supabase = createServiceRoleSupabaseClient();
-
   if (!reportId) {
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) {
-      return NextResponse.json({ error: "Missing bearer token" }, { status: 401 });
-    }
-    const anonClient = createBrowserSupabaseClient();
-    const { data: userData, error: userError } = await anonClient.auth.getUser(token);
-    if (userError || !userData.user) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
-    }
-
-    const { data: merchant, error: merchantError } = await supabase
-      .from("merchants")
-      .select("id, auth_user_id, business_name, bvn_nin_verified, approval_status, monnify_account_number")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (merchantError) {
-      return NextResponse.json({ error: merchantError.message }, { status: 500 });
-    }
-    if (!merchant) {
-      return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
-    }
-
-    let isAuthorized = merchant.auth_user_id === userData.user.id;
-    if (!isAuthorized) {
-      const { data: lender } = await supabase
-        .from("lenders")
-        .select("id")
-        .eq("auth_user_id", userData.user.id)
-        .maybeSingle();
-      isAuthorized = !!lender;
-    }
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { data: latestReport, error: reportError } = await supabase
-      .from("reports")
-      .select("id, revenue_summary, trend_data, confidence_score, fraud_flags_snapshot, generated_at")
-      .eq("merchant_id", id)
-      .order("generated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (reportError) {
-      return NextResponse.json({ error: reportError.message }, { status: 500 });
-    }
-    if (!latestReport) {
-      return NextResponse.json({ error: "No report generated yet" }, { status: 404 });
-    }
-
-    return buildReportResponse(merchant, latestReport);
+    return getLatestReportForBearerToken(request, id);
   }
+
+  const supabase = createServiceRoleSupabaseClient();
 
   const { data: report, error: reportError } = await supabase
     .from("reports")
@@ -239,38 +188,4 @@ export async function GET(
   }
 
   return buildReportResponse(merchant, report);
-}
-
-function buildReportResponse(
-  merchant: {
-    business_name: string;
-    bvn_nin_verified: boolean;
-    approval_status: string;
-    monnify_account_number: string | null;
-  },
-  report: {
-    id: string;
-    revenue_summary: { grossInflow: number; verifiedRevenue: number };
-    trend_data: unknown;
-    confidence_score: number;
-    fraud_flags_snapshot: unknown;
-    generated_at: string;
-  }
-) {
-  return NextResponse.json({
-    reportId: report.id,
-    profile: {
-      businessName: merchant.business_name,
-      approvalStatus: merchant.approval_status,
-      hasVirtualAccount: !!merchant.monnify_account_number,
-    },
-    verificationStatus: {
-      bvnNinVerified: merchant.bvn_nin_verified,
-    },
-    revenueSummary: report.revenue_summary,
-    trendData: report.trend_data,
-    confidenceScore: report.confidence_score,
-    fraudFlags: report.fraud_flags_snapshot,
-    generatedAt: report.generated_at,
-  });
 }

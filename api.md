@@ -197,6 +197,91 @@ Public route — no session. Called directly by Monnify.
 
 ---
 
+## `GET /api/lenders/search`
+*Milestone 12. Implemented in [app/api/lenders/search/route.ts](app/api/lenders/search/route.ts).*
+
+**Auth**: header `Authorization: Bearer <supabase-access-token>`, checked against the `lenders` table only (`lib/lender-auth.ts`'s `authenticateAsLender`) — a merchant's own token is `403`'d here, unlike the merchant-or-lender routes.
+
+**Request**: `GET /api/lenders/search?query=<string>`. `query` matches `merchants.business_name` case-insensitively (partial match) and, if `query` is itself a valid UUID, also matches `merchants.id` exactly. Results are deduped and capped at 25 name matches.
+
+**Response `200`**
+```json
+[
+  { "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "businessName": "TEST-M12-SEED merchant", "confidenceScore": 100 }
+]
+```
+`confidenceScore` is `null` for a merchant with no `reports` row yet (deliberate — not omitted, not defaulted to `100`; see `handoff.md`'s milestone 12 entry for why). For a merchant with one or more reports, it's the `confidence_score` of that merchant's most recently generated report.
+
+**Errors**: `401` — missing/invalid bearer token. `400` — missing `query`. `403` — valid token, but no `lenders` row for that user.
+
+---
+
+## `GET /api/lenders/merchants/:id`
+*Milestone 12. Implemented in [app/api/lenders/merchants/[id]/route.ts](app/api/lenders/merchants/[id]/route.ts) — a one-line delegation to `lib/reports.ts`'s `getLatestReportForBearerToken`, the exact function `GET /api/merchants/:id/report`'s bearer-token path also calls. No reimplementation.*
+
+**Auth**: same as `GET /api/merchants/:id/report`'s bearer-token path — owning merchant OR any lender. Not re-gated to lender-only, by design (this route is a literal alias of the shared logic, per api-contracts.md's "same shape" wording and milestone 10's reuse seam note).
+
+**Request**: `GET /api/lenders/merchants/:id`
+
+**Response `200`** — identical shape to `GET /api/merchants/:id/report`'s bearer-token response (see above): `{ reportId, profile, verificationStatus, revenueSummary, trendData, confidenceScore, fraudFlags, generatedAt }`.
+
+**Errors**: `401`/`403`/`404` as documented for `GET /api/merchants/:id/report`'s bearer-token path (including `404` if the merchant has never generated a report).
+
+---
+
+## `POST /api/loans`
+*Milestone 12 (built ahead of its milestone 13 mention, since nothing else owns a backend route for it and milestone 13's frontend needs it). Implemented in [app/api/loans/route.ts](app/api/loans/route.ts).*
+
+**Auth**: lender-only (`authenticateAsLender`).
+
+**Request**
+```json
+{ "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "amount": 90000 }
+```
+`merchantId` must reference an existing merchant. `amount` must be a positive number.
+
+**Response `201`**
+```json
+{ "loanId": "34aaf648-aa9e-4161-a3e3-a94bac56896d", "status": "pending" }
+```
+`lender_id` on the inserted `loans` row is always the authenticated lender's own id — never taken from the request body.
+
+**Errors**: `400` — bad/missing `merchantId`/`amount`, or non-JSON body. `401`/`403` — as above. `404` — no merchant with that id. `500` — Supabase error.
+
+---
+
+## `POST /api/loans/:id/approve`
+*Milestone 12 (see note above; milestone 15 owns the real repayment simulation). Implemented in [app/api/loans/[id]/approve/route.ts](app/api/loans/[id]/approve/route.ts).*
+
+**Auth**: lender-only, and additionally scoped to **the loan's own lender** — `loan.lender_id` must equal the authenticated lender's id (per `data-model.md`'s RLS intent that lenders only touch their own `loans` rows), `403` otherwise, even for a different, legitimately-authenticated lender.
+
+**Request**: `{}` (body ignored)
+
+**Response `200`**
+```json
+{
+  "loanId": "34aaf648-aa9e-4161-a3e3-a94bac56896d",
+  "status": "approved",
+  "mockRepaymentSchedule": [
+    { "period": 1, "amount": 30000, "dueDate": "2026-08-20T00:31:20.164Z" },
+    { "period": 2, "amount": 30000, "dueDate": "2026-09-20T00:31:20.164Z" },
+    { "period": 3, "amount": 30000, "dueDate": "2026-10-20T00:31:20.164Z" }
+  ]
+}
+```
+
+**`mockRepaymentSchedule` is a placeholder, not real simulation logic** — an even 3-way split of `amount` with no interest/fees, one period per month starting the month after approval. Milestone 15 (repayment automation) is expected to replace this computation entirely with the real "simulated deduction from future revenue" logic, the same way milestone 2 left `monnifyAccountNumber: null` for milestone 4 to fill in for real.
+
+**Errors**: `401`/`403` — as above (including a different lender's own token, valid but not this loan's owner). `404` — no loan with that id.
+
+---
+
+## Lender provisioning (milestone 12)
+
+There is **no public lender signup route** — not in the frozen `api-contracts.md`, and `userflows.md`'s lender flow starts at login. One real lender was provisioned directly against Supabase (same two-step mechanism `POST /api/merchants` uses internally: `auth.admin.createUser` via the Auth Admin REST API with the service-role key, then an insert into `lenders` with the returned `auth_user_id`), run as a disposable script, not committed. See `handoff.md`'s milestone 12 entry for the test account's email/org name/id — the password was reported to the user out-of-band, never committed. A lender authenticates identically to a merchant: `supabase.auth.signInWithPassword({ email, password })`, then `Authorization: Bearer <access_token>` on every route above.
+
+---
+
 ## Not yet implemented
 
-Everything else in `api-contracts.md` (lender search/detail routes, loans, admin fraud queue) — see `plan.md` for which milestone owns each.
+Admin fraud queue (`api-contracts.md`'s Admin section) — see `plan.md` for which milestone owns it.
