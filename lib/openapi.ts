@@ -11,17 +11,16 @@ export const openApiSpec = {
     description: [
       "Interactive API docs (Swagger UI) — same idea as Flask + flasgger.",
       "",
-      "**Auth**",
-      "PROOFR has no `/login` route. Merchants and lenders sign in via Supabase Auth,",
-      "then paste the JWT into **Authorize → BearerAuth**.",
+      "**How to authenticate**",
+      "1. **Bearer JWT** (merchant/lender routes): get a token via Supabase password grant",
+      "   (`POST {NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password` with anon key + email/password),",
+      "   then click **Authorize** and paste into **BearerAuth**, *or* fill the `Authorization` header on each request.",
+      "2. **Public API key** (`GET /api/public/score`): fill the **`x-api-key`** header on that request",
+      "   (shown in Parameters). To create a key: Authorize as a lender → `POST /api/lenders/api-keys`",
+      "   → copy the one-time `apiKey` from the response.",
+      "3. **Admin** routes: fill the **`x-admin-secret`** header (same value as `ADMIN_API_SECRET`).",
       "",
-      "Supabase password grant (run outside this UI, or via Postman Auth folder):",
-      "`POST {NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`",
-      "Headers: `apikey` + `Authorization: Bearer` = anon key",
-      'Body: `{ "email", "password" }` → use `access_token` here.',
-      "",
-      "**Do not paste real secrets into a public share of this page.**",
-      "Use demo credentials provided out-of-band for grading.",
+      "**Do not paste real production secrets into a public write-up.** Use demo credentials out-of-band.",
     ].join("\n"),
   },
   servers: [
@@ -122,6 +121,30 @@ export const openApiSpec = {
         required: true,
         schema: { type: "string", format: "uuid" },
       },
+      AdminSecretHeader: {
+        name: "x-admin-secret",
+        in: "header",
+        required: true,
+        schema: { type: "string" },
+        description:
+          "Value of ADMIN_API_SECRET. Paste here (or use Authorize → AdminSecret).",
+      },
+      PublicApiKeyHeader: {
+        name: "x-api-key",
+        in: "header",
+        required: true,
+        schema: { type: "string", example: "proofr_pk_…" },
+        description:
+          "Create via POST /api/lenders/api-keys after lender login. Copy the one-time `apiKey` from that response.",
+      },
+      MonnifySignatureHeader: {
+        name: "monnify-signature",
+        in: "header",
+        required: true,
+        schema: { type: "string" },
+        description:
+          "Hex HMAC-SHA512 of the exact raw JSON body using MONNIFY_SECRET_KEY.",
+      },
     },
   },
   paths: {
@@ -193,7 +216,10 @@ export const openApiSpec = {
         tags: ["Merchants", "Admin"],
         summary: "Approve merchant (admin)",
         security: [{ AdminSecret: [] }],
-        parameters: [{ $ref: "#/components/parameters/MerchantId" }],
+        parameters: [
+          { $ref: "#/components/parameters/AdminSecretHeader" },
+          { $ref: "#/components/parameters/MerchantId" },
+        ],
         requestBody: {
           content: {
             "application/json": {
@@ -214,7 +240,10 @@ export const openApiSpec = {
         tags: ["Merchants", "Admin"],
         summary: "Reject merchant (admin)",
         security: [{ AdminSecret: [] }],
-        parameters: [{ $ref: "#/components/parameters/MerchantId" }],
+        parameters: [
+          { $ref: "#/components/parameters/AdminSecretHeader" },
+          { $ref: "#/components/parameters/MerchantId" },
+        ],
         requestBody: {
           content: {
             "application/json": {
@@ -536,6 +565,7 @@ export const openApiSpec = {
         tags: ["Admin"],
         summary: "Open fraud flags queue",
         security: [{ AdminSecret: [] }],
+        parameters: [{ $ref: "#/components/parameters/AdminSecretHeader" }],
         responses: {
           "200": { description: "Queue" },
           "401": { description: "Bad admin secret" },
@@ -548,6 +578,7 @@ export const openApiSpec = {
         summary: "Override fraud flag",
         security: [{ AdminSecret: [] }],
         parameters: [
+          { $ref: "#/components/parameters/AdminSecretHeader" },
           {
             name: "id",
             in: "path",
@@ -579,6 +610,7 @@ export const openApiSpec = {
         tags: ["Admin"],
         summary: "Loan outcome tracking",
         security: [{ AdminSecret: [] }],
+        parameters: [{ $ref: "#/components/parameters/AdminSecretHeader" }],
         responses: {
           "200": { description: "Outcomes list" },
         },
@@ -589,6 +621,7 @@ export const openApiSpec = {
         tags: ["Admin"],
         summary: "Pending merchant approvals",
         security: [{ AdminSecret: [] }],
+        parameters: [{ $ref: "#/components/parameters/AdminSecretHeader" }],
         responses: {
           "200": { description: "Pending merchants" },
         },
@@ -598,8 +631,17 @@ export const openApiSpec = {
       get: {
         tags: ["Public API"],
         summary: "Public credit score lookup by phone",
-        security: [{ PublicApiKey: [] }],
+        description: [
+          "Requires header `x-api-key` (shown below in Parameters).",
+          "",
+          "**How to get a key**",
+          "1. Get a lender bearer token (Supabase login with the demo lender account).",
+          "2. Click Authorize → BearerAuth (paste the JWT).",
+          "3. Call `POST /api/lenders/api-keys` — response includes `apiKey` **once**.",
+          "4. Paste that value into `x-api-key` here and Execute.",
+        ].join("\n"),
         parameters: [
+          { $ref: "#/components/parameters/PublicApiKeyHeader" },
           {
             name: "phone",
             in: "query",
@@ -610,7 +652,7 @@ export const openApiSpec = {
         ],
         responses: {
           "200": { description: "Capped score fields" },
-          "401": { description: "Bad API key" },
+          "401": { description: "Missing/invalid/revoked API key" },
           "404": { description: "Not found / no consent" },
         },
       },
@@ -622,6 +664,7 @@ export const openApiSpec = {
         security: [{ MonnifySignature: [] }],
         description:
           "Signature must be recomputed whenever the body changes (HMAC-SHA512 of exact raw JSON).",
+        parameters: [{ $ref: "#/components/parameters/MonnifySignatureHeader" }],
         requestBody: {
           required: true,
           content: {
