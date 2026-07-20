@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase";
 
@@ -18,6 +18,12 @@ interface ApiClientRow {
 
 function hashApiKey(rawKey: string): string {
   return createHash("sha256").update(rawKey, "utf8").digest("hex");
+}
+
+function generateRawApiKey(): { rawKey: string; preview: string } {
+  const rawKey = `proofr_pk_${randomBytes(24).toString("hex")}`;
+  const preview = `${rawKey.slice(0, 14)}…${rawKey.slice(-4)}`;
+  return { rawKey, preview };
 }
 
 export async function authenticateApiClient(
@@ -49,4 +55,4 @@ export async function authenticateApiClient(
   return { supabase, client: client as ApiClientRow };
 }
 
-export { hashApiKey };
+export { hashApiKey, generateRawApiKey };

@@ -452,6 +452,35 @@ Sending `{ "consent": false }` sets `consentedAt` back to `null` — full revoca
 
 ---
 
+## `GET` / `POST /api/lenders/api-keys`, `POST /api/lenders/api-keys/:id/revoke`
+*Milestone 24. Implemented in [app/api/lenders/api-keys/route.ts](app/api/lenders/api-keys/route.ts) and [app/api/lenders/api-keys/[id]/revoke/route.ts](app/api/lenders/api-keys/[id]/revoke/route.ts).*
+
+Lets a lender self-serve provision their own `api_clients` row for `GET /api/public/score`, rather than needing `scripts/provision-api-client.ts` run on their behalf (milestone 22's original, still-valid provisioning path for non-lender third parties). A lender-generated key authenticates against `GET /api/public/score` identically to a manually-provisioned one — same table, same `x-api-key` check.
+
+**Auth**: lender-only bearer token (`lib/lender-auth.ts`'s `authenticateAsLender`), same pattern as `GET /api/lenders/search`.
+
+**`GET /api/lenders/api-keys` response `200`** — every key belonging to the authenticated lender, newest first. Never includes the raw key or hash, only a non-secret `keyPreview` (e.g. `"proofr_pk_ab12…cd34"`) captured at creation time.
+```json
+[
+  { "id": "…", "name": "Investor demo key", "keyPreview": "proofr_pk_ab12…cd34", "createdAt": "2026-07-20T…", "revokedAt": null }
+]
+```
+
+**`POST /api/lenders/api-keys` request** — `{ "name": "Investor demo key" }` (optional; defaults to `"<org_name> key"`).
+
+**`POST /api/lenders/api-keys` response `200`** — the **only** time the raw key is returned; not retrievable again afterward (same one-shot posture as `scripts/provision-api-client.ts`).
+```json
+{ "id": "…", "name": "Investor demo key", "keyPreview": "proofr_pk_ab12…cd34", "createdAt": "2026-07-20T…", "apiKey": "proofr_pk_<48 hex chars>" }
+```
+
+**`POST /api/lenders/api-keys/:id/revoke`** — sets `revoked_at`; a revoked key immediately fails `GET /api/public/score` auth (same `revoked_at is null` check `lib/public-api-auth.ts` already applied to script-provisioned keys). `404` if the key doesn't exist or belongs to a different lender — a lender can only see/revoke their own keys.
+
+**Errors**: `401` — missing/invalid bearer token. `403` — token doesn't belong to a lender. `404` (revoke only) — key not found or not owned by this lender. `500` — Supabase error.
+
+**UI**: `app/lender/page.tsx` gained a "Public API keys" card — generate (with an optional label), a one-time reveal banner with copy-to-clipboard for the raw key, a list of existing keys (name/preview/created date/status), and a revoke button per active key.
+
+---
+
 ## Not yet implemented
 
 Nothing currently tracked here — all `api-contracts.md` sections and milestones 1–23's additive endpoints are implemented as of this entry.

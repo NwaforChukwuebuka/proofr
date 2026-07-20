@@ -14,9 +14,8 @@
  * this row (set `revoked_at`) and provision a fresh one; there is no
  * recovery mechanism by design.
  */
-import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { hashApiKey } from "../lib/public-api-auth";
+import { generateRawApiKey, hashApiKey } from "../lib/public-api-auth";
 
 async function main() {
   const name = process.argv[2];
@@ -33,11 +32,11 @@ async function main() {
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
-  const rawKey = `proofr_pk_${crypto.randomBytes(24).toString("hex")}`;
+  const { rawKey, preview } = generateRawApiKey();
 
   const { data, error } = await admin
     .from("api_clients")
-    .insert({ name: name.trim(), api_key_hash: hashApiKey(rawKey) })
+    .insert({ name: name.trim(), api_key_hash: hashApiKey(rawKey), key_preview: preview })
     .select("id")
     .single();
 
