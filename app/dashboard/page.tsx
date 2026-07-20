@@ -8,6 +8,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase";
 import { TrendChart } from "./trend-chart";
 import { FraudFlagsCard, type FraudFlag } from "./fraud-flags";
 import { TransactionsCard, type Transaction } from "./transactions-list";
+import { LoansCard, type Loan } from "./loans-card";
 
 interface Merchant {
   id: string;
@@ -37,10 +38,12 @@ export default function DashboardPage() {
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [flags, setFlags] = useState<FraudFlag[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [justUpdated, setJustUpdated] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedMerchantId, setCopiedMerchantId] = useState(false);
   const [publicApiConsent, setPublicApiConsent] = useState<{ consentGranted: boolean; consentedAt: string | null } | null>(null);
   const [savingConsent, setSavingConsent] = useState(false);
 
@@ -92,6 +95,14 @@ export default function DashboardPage() {
       return;
     }
     setTransactions((data ?? []) as Transaction[]);
+  }, []);
+
+  const fetchLoans = useCallback(async (merchantId: string, accessToken: string) => {
+    const res = await fetch(`/api/merchants/${merchantId}/loans`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return;
+    setLoans(await res.json());
   }, []);
 
   const fetchConsent = useCallback(async (merchantId: string, accessToken: string) => {
@@ -165,6 +176,7 @@ export default function DashboardPage() {
           fetchFlags((merchantRow as Merchant).id),
           fetchConsent((merchantRow as Merchant).id, currentSession.access_token),
           fetchTransactions((merchantRow as Merchant).id),
+          fetchLoans((merchantRow as Merchant).id, currentSession.access_token),
         ]);
       }
 
@@ -175,7 +187,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, fetchRevenue, fetchFlags, fetchConsent, fetchTransactions]);
+  }, [router, fetchRevenue, fetchFlags, fetchConsent, fetchTransactions, fetchLoans]);
 
   // Granularity toggle re-fetch.
   useEffect(() => {
@@ -206,6 +218,7 @@ export default function DashboardPage() {
           fetchRevenue(merchant.id, session.access_token, granularity);
           fetchFlags(merchant.id);
           fetchTransactions(merchant.id);
+          fetchLoans(merchant.id, session.access_token);
           setJustUpdated(true);
           setTimeout(() => setJustUpdated(false), 3000);
         }
@@ -280,6 +293,13 @@ export default function DashboardPage() {
     setCopied(true);
     if (copyTimeout.current) clearTimeout(copyTimeout.current);
     copyTimeout.current = setTimeout(() => setCopied(false), 2000);
+  }
+
+  function copyMerchantId() {
+    if (!merchant) return;
+    navigator.clipboard.writeText(merchant.id);
+    setCopiedMerchantId(true);
+    setTimeout(() => setCopiedMerchantId(false), 2000);
   }
 
   if (loading) {
@@ -417,6 +437,8 @@ export default function DashboardPage() {
                 </div>
               </section>
 
+              <LoansCard loans={loans} />
+
               <TransactionsCard
                 transactions={transactions}
                 flaggedTransactionIds={flaggedTransactionIds}
@@ -427,6 +449,27 @@ export default function DashboardPage() {
 
             <aside className="space-y-5 lg:sticky lg:top-6">
               <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Merchant ID
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="min-w-0 truncate font-mono text-sm font-semibold text-zinc-900">
+                    {merchant.id}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={copyMerchantId}
+                    className="cursor-pointer shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  >
+                    {copiedMerchantId ? "Copied" : "Copy ID"}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Share this ID with a lender so they can find your profile quickly.
+                </p>
+
+                <div className="my-5 border-t border-zinc-100" />
+
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Dedicated account
                 </p>
