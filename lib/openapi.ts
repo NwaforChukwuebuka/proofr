@@ -8,22 +8,6 @@ export const openApiSpec = {
   info: {
     title: "PROOFR API",
     version: "1.0.0",
-    description: [
-      "Interactive API docs (Swagger UI) — same idea as Flask + flasgger.",
-      "",
-      "**How to get a bearer token (graders)**",
-      "1. Open **Auth → POST /api/auth/login**.",
-      "2. Body: demo merchant or lender `{ email, password }` (credentials sent to you out-of-band).",
-      "3. Copy `accessToken` from the response.",
-      "4. Click **Authorize → BearerAuth**, paste it, then call the other routes.",
-      "",
-      "You do **not** need `NEXT_PUBLIC_SUPABASE_URL` or the anon key — this server already has them.",
-      "",
-      "**Public API key** (`GET /api/public/score`): after lender login, call `POST /api/lenders/api-keys`,",
-      "copy the one-time `apiKey`, paste into the `x-api-key` header on that request.",
-      "",
-      "**Admin** routes: fill `x-admin-secret` (same as `ADMIN_API_SECRET`, shared out-of-band).",
-    ].join("\n"),
   },
   servers: [
     {
@@ -154,9 +138,8 @@ export const openApiSpec = {
     "/api/auth/login": {
       post: {
         tags: ["Auth"],
-        summary: "⭐ Login — get bearer token (START HERE)",
-        description:
-          "START HERE for grading. Body: demo email + password → copy accessToken → click Authorize (top of page) → BearerAuth → paste token. Then call merchant/lender routes.",
+        summary: "Login",
+        description: "Returns a Bearer accessToken for merchant or lender routes.",
         requestBody: {
           required: true,
           content: {
@@ -689,15 +672,6 @@ export const openApiSpec = {
       get: {
         tags: ["Public API"],
         summary: "Public credit score lookup by phone",
-        description: [
-          "Requires header `x-api-key` (shown below in Parameters).",
-          "",
-          "**How to get a key**",
-          "1. Get a lender bearer token (Supabase login with the demo lender account).",
-          "2. Click Authorize → BearerAuth (paste the JWT).",
-          "3. Call `POST /api/lenders/api-keys` — response includes `apiKey` **once**.",
-          "4. Paste that value into `x-api-key` here and Execute.",
-        ].join("\n"),
         parameters: [
           { $ref: "#/components/parameters/PublicApiKeyHeader" },
           {
