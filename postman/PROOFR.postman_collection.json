@@ -1,0 +1,340 @@
+{
+  "info": {
+    "name": "PROOFR API",
+    "description": "As-built PROOFR API collection, generated from api.md. Base URL, tokens, and secrets are pulled from the paired environment file (PROOFR.postman_environment.json). Update {{merchantAccessToken}} / {{lenderAccessToken}} by signing in via Supabase Auth (supabase.auth.signInWithPassword) and pasting the returned access_token — there is no login route on this API itself.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "merchantId", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "loanId", "value": "" },
+    { "key": "fraudFlagId", "value": "" },
+    { "key": "merchantAccessToken", "value": "" },
+    { "key": "lenderAccessToken", "value": "" },
+    { "key": "adminApiSecret", "value": "" },
+    { "key": "publicApiKey", "value": "" },
+    { "key": "merchantPhone", "value": "+2348012345678" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Merchants",
+      "item": [
+        {
+          "name": "POST /api/merchants (signup)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2348012345678\",\n  \"email\": \"merchant@example.com\",\n  \"password\": \"SuperSecret123!\",\n  \"businessName\": \"Test Suya Spot\",\n  \"bvnOrNin\": \"12345678901\",\n  \"personalAccountNumber\": \"\",\n  \"businessStartDate\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/merchants", "host": ["{{baseUrl}}"], "path": ["api", "merchants"] }
+          }
+        },
+        {
+          "name": "POST /api/merchants/:id/approve (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-admin-secret", "value": "{{adminApiSecret}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/merchants/:id/revenue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/revenue?granularity=daily",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "revenue"],
+              "query": [{ "key": "granularity", "value": "daily", "description": "daily|monthly" }]
+            }
+          }
+        },
+        {
+          "name": "POST /api/merchants/:id/report (generate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "report"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/merchants/:id/report (latest, bearer)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "report"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/merchants/:id/report (by reportId, no auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/report?reportId={{reportId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "report"],
+              "query": [{ "key": "reportId", "value": "{{reportId}}" }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/merchants/:id/loans",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/loans",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "loans"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/merchants/:id/reject (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-admin-secret", "value": "{{adminApiSecret}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/merchants/:id/public-api-consent",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/public-api-consent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "public-api-consent"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/merchants/:id/public-api-consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchantAccessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"consent\": true\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}/public-api-consent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}", "public-api-consent"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "POST /api/webhooks/monnify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "monnify-signature", "value": "<hex hmac-sha512 of raw body using MONNIFY_SECRET_KEY>" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"SUCCESSFUL_TRANSACTION\",\n  \"eventData\": {\n    \"product\": { \"type\": \"RESERVED_ACCOUNT\", \"reference\": \"PROOFR-<merchantId>\" },\n    \"transactionReference\": \"MNFY|79|20260719222030|000096\",\n    \"paymentReference\": \"MNFY|79|20260719222030|000096\",\n    \"amountPaid\": 30000,\n    \"totalPayable\": 30000,\n    \"paymentStatus\": \"PAID\",\n    \"paymentMethod\": \"ACCOUNT_TRANSFER\",\n    \"destinationAccountInformation\": { \"accountNumber\": \"4003488430\", \"bankCode\": \"035\", \"bankName\": \"Wema bank\" },\n    \"paymentSourceInformation\": [\n      { \"accountName\": \"Monnify Limited\", \"accountNumber\": \"2048714015\", \"bankCode\": \"057\", \"amountPaid\": 30000, \"sessionId\": \"...\" }\n    ],\n    \"customer\": { \"name\": \"suya joint\", \"email\": \"chukwuebuka.nwaforx@gmail.com\" }\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/webhooks/monnify", "host": ["{{baseUrl}}"], "path": ["api", "webhooks", "monnify"] },
+            "description": "monnify-signature must be recomputed locally (hex HMAC-SHA512 of the exact raw request body using MONNIFY_SECRET_KEY) whenever the body is edited — Postman cannot compute this automatically without a pre-request script."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lenders",
+      "item": [
+        {
+          "name": "GET /api/lenders/search",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{lenderAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/lenders/search?query=suya",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lenders", "search"],
+              "query": [{ "key": "query", "value": "suya" }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/lenders/merchants/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{lenderAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/lenders/merchants/{{merchantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lenders", "merchants", "{{merchantId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Loans",
+      "item": [
+        {
+          "name": "POST /api/loans (create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{lenderAccessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchantId}}\",\n  \"amount\": 90000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/loans", "host": ["{{baseUrl}}"], "path": ["api", "loans"] }
+          }
+        },
+        {
+          "name": "POST /api/loans/:id/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{lenderAccessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "{{loanId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{lenderAccessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "{{loanId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "GET /api/admin/fraud-queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-admin-secret", "value": "{{adminApiSecret}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/fraud-queue", "host": ["{{baseUrl}}"], "path": ["api", "admin", "fraud-queue"] }
+          }
+        },
+        {
+          "name": "POST /api/admin/fraud-flags/:id/override",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-admin-secret", "value": "{{adminApiSecret}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"action\": \"clear\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fraud-flags/{{fraudFlagId}}/override",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "fraud-flags", "{{fraudFlagId}}", "override"]
+            },
+            "description": "action must be \"clear\" (false positive -> status: overridden) or \"confirm\" (real fraud -> stays open, reviewed_at set)."
+          }
+        },
+        {
+          "name": "GET /api/admin/loan-outcomes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-admin-secret", "value": "{{adminApiSecret}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/loan-outcomes", "host": ["{{baseUrl}}"], "path": ["api", "admin", "loan-outcomes"] }
+          }
+        },
+        {
+          "name": "GET /api/admin/pending-merchants",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-admin-secret", "value": "{{adminApiSecret}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/pending-merchants", "host": ["{{baseUrl}}"], "path": ["api", "admin", "pending-merchants"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public API",
+      "item": [
+        {
+          "name": "GET /api/public/score",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "x-api-key", "value": "{{publicApiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/score?phone={{merchantPhone}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "score"],
+              "query": [{ "key": "phone", "value": "{{merchantPhone}}" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
