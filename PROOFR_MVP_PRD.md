@@ -97,6 +97,9 @@ Reviews fraud and manages merchants.
 -   Revenue dashboard
 -   Basic fraud detection
 -   Proof-of-Revenue report
+-   Credit intelligence engine (credit score + recommended loan amount)
+-   Risk-based loan terms
+-   Public credit-lookup API (consent-gated)
 -   Lender portal
 -   Admin portal
 
@@ -118,12 +121,14 @@ Reviews fraud and manages merchants.
 -   Share account with customers
 -   View verified revenue
 -   Share report with lender
+-   Control (opt in/out) whether third-party platforms can look up their score
 
 ### Lender
 
 -   Search merchant
--   View score and revenue
+-   View credit score, recommended loan amount, and revenue
 -   Download report
+-   Approve a loan at risk-based terms, pre-filled with the recommended amount
 
 ## Functional Requirements
 
@@ -157,12 +162,29 @@ score (repayment-likelihood signal, composed from revenue trend/
 consistency, account tenure, customer repeat-rate, and the fraud
 confidence score — see `credit-intelligence-engine.md`) - Fraud flags
 
+### Credit Intelligence Engine
+
+Compute: - Credit score (0-100, repayment-likelihood signal — see
+`credit-intelligence-engine.md`) - Recommended loan amount (naira
+figure, capacity-based) - Risk-based loan terms (interest rate + term
+length, tiered by credit score) - Outcome-tracking snapshot on each
+loan (for future recalibration once real repayment data exists)
+
+### Public API
+
+-   API-key-gated lookup of a merchant's credit score/recommended
+    amount by phone number, for platforms outside PROOFR's own lender
+    portal
+-   Merchant-controlled consent (opt-in, revocable) gates every lookup
+-   Every query logged for audit purposes
+
 ### Admin
 
 -   Merchant review
 -   Fraud queue
 -   Manual overrides
 -   Audit log
+-   Loan-outcome reporting (predicted vs. actual, per loan)
 
 ## Non-functional Requirements
 
@@ -175,7 +197,10 @@ confidence score — see `credit-intelligence-engine.md`) - Fraud flags
 ## High-Level Architecture
 
 Customer → Virtual Account → Payment Provider → Webhooks → Revenue
-Engine → Fraud Engine → Merchant Dashboard → Lender Portal
+Engine → Fraud Engine → Credit Intelligence Engine → Merchant Dashboard
+→ Lender Portal (loan approval at risk-based terms) → Public API
+(consent-gated, third-party lookup). Full diagram in
+`architecture.md`.
 
 ## Risks
 
@@ -185,14 +210,18 @@ Engine → Fraud Engine → Merchant Dashboard → Lender Portal
 
 ## Roadmap
 
-Phase 1: MVP (payment collection + fraud rules + revenue dashboard).
-Phase 2: Credit scoring — v1 repayment-likelihood model from data
-already captured in Phase 1 (see `credit-intelligence-engine.md`); no
-new external integrations. Phase 3: Recommended-amount/risk-based loan
-terms, automated lending marketplace. Phase 4: Cross-platform financial
-identity network (a portable score usable beyond a single lender or
-wallet ecosystem) — contingent on demand signal from Phase 2/3, not
-committed here.
+Phase 1: MVP (payment collection + fraud rules + revenue dashboard) —
+**done**. Phase 2: Credit scoring — v1 repayment-likelihood model from
+data already captured in Phase 1 (see `credit-intelligence-engine.md`);
+no new external integrations — **done**. Phase 3: Recommended loan
+amount and risk-based loan terms (interest/length tied to credit
+score) — **v1 done**; a full automated lending marketplace remains
+future work. Phase 4: Cross-platform financial identity network — **v1
+done**: an API-key-gated public credit lookup (`GET /api/public/score`)
+with merchant-controlled, opt-in consent, so a score is usable beyond a
+single lender relationship. Not yet done: rate-limiting on API keys,
+merchant visibility into who has queried them, and demand validation
+from a real external platform integration.
 
 ## Investor Demo Flow
 
@@ -200,9 +229,9 @@ committed here.
 2.  Virtual account issued.
 3.  Demo customer pays.
 4.  Revenue dashboard updates.
-5.  Fraud engine scores payment.
-6.  Proof-of-Revenue report generated.
-7.  Lender approves mock loan.
+5.  Fraud engine scores payment; credit intelligence engine computes a credit score and a recommended loan amount from revenue behavior, tenure, and customer patterns — not just a fraud checklist.
+6.  Proof-of-Revenue report generated, headlined by the credit score and recommended amount, with a fraud confidence score and revenue detail underneath.
+7.  Lender opens the merchant, sees "recommended: ₦X" pre-filled, and approves a loan in one click at risk-based terms (interest/length tied to that merchant's score) — not a fixed, one-size-fits-all schedule.
 8.  Repayment automation illustrated.
 
 ## Acceptance Criteria
