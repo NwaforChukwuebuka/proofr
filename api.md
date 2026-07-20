@@ -395,11 +395,13 @@ There is **no public lender signup route** — not in the frozen `api-contracts.
 ## `GET /api/public/score?phone=<E.164>`
 *Milestone 22. Implemented in [app/api/public/score/route.ts](app/api/public/score/route.ts), auth in [lib/public-api-auth.ts](lib/public-api-auth.ts).*
 
-The Phase 4 "portable, cross-platform identity" endpoint — see `credit-intelligence-engine.md`'s Phase 4 section for the full rationale and the explicitly-unresolved consent/opt-out gap.
+The Phase 4 "portable, cross-platform identity" endpoint — see `credit-intelligence-engine.md`'s Phase 4 section for the full rationale.
 
 **Auth**: header `x-api-key: <raw key>` — checked against `api_clients.api_key_hash` (SHA-256 of the raw key). No Supabase session involved; callers are third-party platforms, not PROOFR lenders. Keys are provisioned only via `scripts/provision-api-client.ts` (no public signup, same posture as milestone 12's lender provisioning).
 
 **Request**: `GET /api/public/score?phone=+2348012345678` — `phone` must match `merchants.phone` exactly and be E.164-shaped (`^\+\d{8,15}$`).
+
+**Milestone 23 update**: a merchant must now also have granted consent (`merchants.public_api_consent_at` non-null, via `POST /api/merchants/:id/public-api-consent` below) — `approval_status: "approved"` alone is no longer sufficient. Live-verified: an approved-but-unconsented merchant returns `404` identical to a nonexistent phone number; granting consent immediately makes the same query return `200`; revoking immediately reverts it to `404`.
 
 **Response `200`** (real, live-verified example)
 ```json
@@ -420,6 +422,36 @@ Deliberately capped at these three summary fields — no `revenueSummary`, `tren
 
 ---
 
+## `GET` / `POST /api/merchants/:id/public-api-consent`
+*Milestone 23. Implemented in [app/api/merchants/[id]/public-api-consent/route.ts](app/api/merchants/[id]/public-api-consent/route.ts).*
+
+Lets a merchant grant or revoke their own visibility to `GET /api/public/score` — closes the consent gap milestone 22 shipped with.
+
+**Auth**: merchant-owner-only, same bearer-token-owns-the-record pattern as `POST /api/merchants/:id/report` — no lender path, this is squarely the merchant's own decision.
+
+**`GET` response `200`**
+```json
+{ "consentGranted": false, "consentedAt": null }
+```
+`null`/`false` for every merchant by default, including everyone who signed up before this migration — nobody was retroactively opted in.
+
+**`POST` request**
+```json
+{ "consent": true }
+```
+
+**`POST` response `200`** (after granting)
+```json
+{ "consentGranted": true, "consentedAt": "2026-07-20T17:43:03.189+00:00" }
+```
+Sending `{ "consent": false }` sets `consentedAt` back to `null` — full revocation, not a soft flag; `GET /api/public/score` immediately stops returning this merchant.
+
+**Errors**: `400` — `consent` missing or not a boolean, or non-JSON body. `401` — missing/invalid bearer token. `403` — valid token belonging to a different merchant. `404` — no merchant with that id.
+
+**Live-verified, the full grant/revoke cycle**: default state `{ consentGranted: false, consentedAt: null }` → `GET /api/public/score` for that merchant returned `404` → granted consent → identical query returned `200` with correct data → revoked → identical query returned `404` again. Also confirmed a different merchant's own valid bearer token gets `403` attempting to change this merchant's consent.
+
+---
+
 ## Not yet implemented
 
-Nothing currently tracked here — all `api-contracts.md` sections and milestones 1–22's additive endpoints are implemented as of this entry.
+Nothing currently tracked here — all `api-contracts.md` sections and milestones 1–23's additive endpoints are implemented as of this entry.

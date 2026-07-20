@@ -19,15 +19,15 @@ import { authenticateApiClient } from "@/lib/public-api-auth";
  * Only `approval_status: "approved"` merchants are queryable — an
  * unapproved/rejected merchant's existence isn't exposed externally.
  *
- * **Known, unresolved product/privacy gap, stated plainly**: this endpoint
- * does not implement per-merchant consent or an opt-out. Any provisioned
- * api_client can query any approved merchant's phone number without that
- * merchant being notified or able to block it. This mirrors how lender
- * search already works internally (any lender can already look up any
- * merchant), extended to external platforms — but the difference in kind
- * (a merchant has no relationship at all with an unknown third-party
- * platform) makes this worth flagging before any real external integration,
- * not something to treat as already resolved. See
+ * **Milestone 23 closed the consent gap this shipped with**: a merchant is
+ * only queryable here if `merchants.public_api_consent_at` is non-null —
+ * granted via POST /api/merchants/:id/public-api-consent, the merchant's own
+ * explicit, revocable action. This column defaults to `null` for every
+ * merchant (nobody was retroactively opted in when the column was added).
+ * A merchant who is approved but hasn't consented gets the identical 404 a
+ * nonexistent phone number would — the caller can't distinguish "doesn't
+ * exist," "not approved," or "hasn't consented," by design, same
+ * non-disclosure stance as everywhere else in this API. See
  * credit-intelligence-engine.md's "Phase 4" section.
  */
 
@@ -53,6 +53,7 @@ export async function GET(request: Request) {
     .select("id, business_name, approval_status")
     .eq("phone", phone)
     .eq("approval_status", "approved")
+    .not("public_api_consent_at", "is", null)
     .maybeSingle();
 
   if (merchantError) {

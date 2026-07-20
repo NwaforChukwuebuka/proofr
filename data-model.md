@@ -1,6 +1,6 @@
 # PROOFR — Data Model (Supabase / Postgres)
 
-Supports [plan.md](plan.md) milestones 1–22. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
+Supports [plan.md](plan.md) milestones 1–23. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
 
 ## `merchants`
 
@@ -17,6 +17,7 @@ Supports [plan.md](plan.md) milestones 1–22. All tables use `uuid` primary key
 | `monnify_account_reference` | text, nullable | Monnify's internal reference |
 | `personal_account_number` | text, nullable | Milestone 17. Optional, captured at signup. Activates `lib/fraud.ts`'s `self_funding` rule (previously always inert — see [fraud-rules.md](fraud-rules.md)) |
 | `business_started_at` | date, nullable | Milestone 17. Self-reported, unverified business age — distinct from `created_at` (platform tenure). See [credit-intelligence-engine.md](credit-intelligence-engine.md) |
+| `public_api_consent_at` | timestamptz, nullable | Milestone 23. `null` by default for every merchant (including everyone who existed before this column) — set only via the merchant's own explicit `POST /api/merchants/:id/public-api-consent`. Gates `GET /api/public/score` (milestone 22) |
 | `created_at`, `updated_at` | timestamptz | |
 
 ## `transactions`

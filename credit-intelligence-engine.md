@@ -178,18 +178,25 @@ relationships.
   unauthorized — since no rate-limiting exists yet; this is the only
   abuse-detection mechanism today.
 
-**Known, unresolved gap — stated plainly, not glossed over**: this
-does not implement per-merchant consent or an opt-out. Any provisioned
-`api_client` can query any approved merchant's phone number without
-that merchant being notified or able to block it. This mirrors how
-lender search already works internally (any lender can already look
-up any merchant), extended outward to external platforms — but "a
-lender" and "an unknown third-party platform with no relationship to
-this merchant at all" are different in kind, not just degree. This is
-explicitly flagged as needing resolution (merchant consent flow, an
-opt-out mechanism, or at minimum a disclosure in the merchant-facing
-product) before any real external platform is onboarded — not treated
-as already solved by this milestone shipping.
+**Consent gap — closed in milestone 23.** Milestone 22 shipped without
+per-merchant consent: any provisioned `api_client` could query any
+approved merchant's phone number without that merchant being notified
+or able to block it. Milestone 23 added `merchants.public_api_consent_at`
+(`null` by default, for every merchant including everyone who existed
+before the column was added — nobody was retroactively opted in) and
+`POST /api/merchants/:id/public-api-consent`, the merchant's own
+explicit, revocable grant/revoke action, surfaced as a toggle on their
+dashboard. `GET /api/public/score` now requires both
+`approval_status: "approved"` **and** a non-null `public_api_consent_at`
+— an approved-but-unconsented merchant gets the identical 404 a
+nonexistent phone number would, so a caller can't distinguish
+"doesn't exist," "not approved," or "hasn't consented."
+
+Still open, deliberately not bundled into this fix: a merchant currently
+has no visibility into *who* has queried them or *how many times* — only
+that lookups are possible at all once they opt in. `api_access_log`
+already has the data to build that view; it just isn't surfaced to the
+merchant yet.
 
 ## Output shape
 

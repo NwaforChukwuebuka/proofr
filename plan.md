@@ -108,6 +108,10 @@ Reframes the product per the PRD's revised Vision (see [PROOFR_MVP_PRD.md](PROOF
     *Done when*: the admin endpoint correctly reports a real loan's predicted-vs-actual figures and derived outcome. **Live-verified** — see `handoff.md`.
 
 22. `[x]` **(Backend) Public credit-lookup API (Phase 4 v1)**
-    `GET /api/public/score?phone=<E.164>` — API-key-gated (`api_clients`, provisioned via `scripts/provision-api-client.ts`, no public signup), scoped to approved merchants only, capped at the same three summary fields a lender sees (no revenue/breakdown/transaction data), every query logged to `api_access_log`. **Known unresolved gap, not silently treated as solved**: no per-merchant consent or opt-out mechanism exists yet — flagged in `credit-intelligence-engine.md` as needing resolution before any real third-party platform is onboarded.
+    `GET /api/public/score?phone=<E.164>` — API-key-gated (`api_clients`, provisioned via `scripts/provision-api-client.ts`, no public signup), scoped to approved merchants only, capped at the same three summary fields a lender sees (no revenue/breakdown/transaction data), every query logged to `api_access_log`. Shipped with a known consent gap, closed by milestone 23 below.
     *Done when*: a provisioned key can query an approved merchant's score and gets exactly the capped fields; bad/missing keys, unapproved merchants, and malformed phone numbers are all correctly rejected; every query is logged. **Live-verified** — see `handoff.md`.
+
+23. `[x]` **(Both) Public API consent gate**
+    `merchants.public_api_consent_at` (`null` by default for every merchant, including everyone who existed before this migration) + `POST /api/merchants/:id/public-api-consent` (merchant's own explicit grant/revoke) + a dashboard toggle. `GET /api/public/score` now requires consent in addition to approval status — closes the gap milestone 22 shipped with.
+    *Done when*: an approved-but-unconsented merchant returns the same 404 as a nonexistent one; granting consent makes them queryable; revoking immediately blocks them again; only the owning merchant can change their own consent. **Live-verified**, including the full grant/revoke cycle and cross-merchant authorization check — see `handoff.md`.
 

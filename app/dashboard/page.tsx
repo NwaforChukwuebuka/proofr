@@ -39,6 +39,8 @@ export default function DashboardPage() {
   const [justUpdated, setJustUpdated] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
+  const [publicApiConsent, setPublicApiConsent] = useState<{ consentGranted: boolean; consentedAt: string | null } | null>(null);
+  const [savingConsent, setSavingConsent] = useState(false);
 
   const fetchRevenue = useCallback(
     async (merchantId: string, accessToken: string, gran: Granularity) => {
@@ -73,6 +75,34 @@ export default function DashboardPage() {
     }
     setFlags((data ?? []) as unknown as FraudFlag[]);
   }, []);
+
+  const fetchConsent = useCallback(async (merchantId: string, accessToken: string) => {
+    const res = await fetch(`/api/merchants/${merchantId}/public-api-consent`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return;
+    setPublicApiConsent(await res.json());
+  }, []);
+
+  async function togglePublicApiConsent(nextConsent: boolean) {
+    if (!merchant || !session) return;
+    setSavingConsent(true);
+    try {
+      const res = await fetch(`/api/merchants/${merchant.id}/public-api-consent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ consent: nextConsent }),
+      });
+      if (res.ok) {
+        setPublicApiConsent(await res.json());
+      }
+    } finally {
+      setSavingConsent(false);
+    }
+  }
 
   // Initial load: session -> merchant profile -> revenue.
   useEffect(() => {
@@ -115,6 +145,7 @@ export default function DashboardPage() {
             "daily"
           ),
           fetchFlags((merchantRow as Merchant).id),
+          fetchConsent((merchantRow as Merchant).id, currentSession.access_token),
         ]);
       }
 
@@ -125,7 +156,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, fetchRevenue, fetchFlags]);
+  }, [router, fetchRevenue, fetchFlags, fetchConsent]);
 
   // Granularity toggle re-fetch.
   useEffect(() => {
@@ -399,6 +430,55 @@ export default function DashboardPage() {
               >
                 View my latest report
               </Link>
+            </div>
+
+            {/* Third-party credit lookup consent */}
+            <div className="rounded-3xl bg-white p-6 shadow-2xl">
+              <p className="text-xs font-medium text-zinc-400">
+                Third-party credit lookups
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Lets external platforms you haven&apos;t directly shared a
+                report with look up your credit score and recommended loan
+                amount by your phone number — never your revenue details or
+                transaction history. Off by default; you can turn this off
+                again at any time.
+              </p>
+              <div className="mt-4 flex items-center justify-between rounded-2xl bg-brand-tint/60 px-4 py-3">
+                <span className="text-sm font-semibold text-zinc-700">
+                  {publicApiConsent?.consentGranted
+                    ? "Enabled"
+                    : "Disabled"}
+                </span>
+                <button
+                  type="button"
+                  disabled={savingConsent || publicApiConsent === null}
+                  onClick={() =>
+                    togglePublicApiConsent(!publicApiConsent?.consentGranted)
+                  }
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-60 ${
+                    publicApiConsent?.consentGranted
+                      ? "bg-white text-red-600 hover:bg-red-50"
+                      : "bg-brand text-white hover:bg-brand-dark"
+                  }`}
+                >
+                  {savingConsent
+                    ? "Saving…"
+                    : publicApiConsent?.consentGranted
+                    ? "Turn off"
+                    : "Turn on"}
+                </button>
+              </div>
+              {publicApiConsent?.consentGranted && publicApiConsent.consentedAt && (
+                <p className="mt-2 text-xs text-zinc-400">
+                  Enabled since{" "}
+                  {new Date(publicApiConsent.consentedAt).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
             </div>
           </div>
         )}
