@@ -251,7 +251,7 @@ Public route — no session. Called directly by Monnify.
 ---
 
 ## `POST /api/loans/:id/approve`
-*Milestone 12 (see note above; milestone 15 owns the real repayment simulation). Implemented in [app/api/loans/[id]/approve/route.ts](app/api/loans/[id]/approve/route.ts).*
+*Milestone 12 (schedule shape) + 15 (progress fields). Implemented in [app/api/loans/[id]/approve/route.ts](app/api/loans/[id]/approve/route.ts).*
 
 **Auth**: lender-only, and additionally scoped to **the loan's own lender** — `loan.lender_id` must equal the authenticated lender's id (per `data-model.md`'s RLS intent that lenders only touch their own `loans` rows), `403` otherwise, even for a different, legitimately-authenticated lender.
 
@@ -263,16 +263,54 @@ Public route — no session. Called directly by Monnify.
   "loanId": "34aaf648-aa9e-4161-a3e3-a94bac56896d",
   "status": "approved",
   "mockRepaymentSchedule": [
-    { "period": 1, "amount": 30000, "dueDate": "2026-08-20T00:31:20.164Z" },
-    { "period": 2, "amount": 30000, "dueDate": "2026-09-20T00:31:20.164Z" },
-    { "period": 3, "amount": 30000, "dueDate": "2026-10-20T00:31:20.164Z" }
+    { "period": 1, "amount": 30000, "dueDate": "2026-08-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null },
+    { "period": 2, "amount": 30000, "dueDate": "2026-09-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null },
+    { "period": 3, "amount": 30000, "dueDate": "2026-10-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null }
   ]
 }
 ```
 
-**`mockRepaymentSchedule` is a placeholder, not real simulation logic** — an even 3-way split of `amount` with no interest/fees, one period per month starting the month after approval. Milestone 15 (repayment automation) is expected to replace this computation entirely with the real "simulated deduction from future revenue" logic, the same way milestone 2 left `monnifyAccountNumber: null` for milestone 4 to fill in for real.
+**The schedule's *shape*** (even 3-way split of `amount`, no interest/fees, one period per month starting the month after approval) is still the milestone 12 placeholder math — milestone 15 didn't redesign it, per its scope. What milestone 15 added is the **progress tracking** on each period (`status`, `paidAmount`, `paidAt`, all starting `"pending"`/`0`/`null`) — see `POST /api/webhooks/monnify` below for how these advance.
 
 **Errors**: `401`/`403` — as above (including a different lender's own token, valid but not this loan's owner). `404` — no loan with that id.
+
+---
+
+## `GET /api/loans/:id`
+*Milestone 15. Additive — not in the frozen `api-contracts.md` "Loans" section (same kind of pragmatic addition as milestone 6's `?granularity` param or milestone 11's `reportId` field). Implemented in [app/api/loans/[id]/route.ts](app/api/loans/[id]/route.ts).*
+
+Fetch a loan's current state — the only way to observe repayment progress after approval, since no route previously let anyone re-fetch a loan.
+
+**Auth**: lender-only, scoped to the loan's own lender (identical check to `POST /api/loans/:id/approve` above).
+
+**Response `200`**
+```json
+{
+  "loanId": "34aaf648-aa9e-4161-a3e3-a94bac56896d",
+  "status": "repaying",
+  "mockRepaymentSchedule": [
+    { "period": 1, "amount": 10000, "dueDate": "2026-08-20T01:56:07.027Z", "status": "paid", "paidAmount": 10000, "paidAt": "2026-07-20T01:56:12.951Z" },
+    { "period": 2, "amount": 10000, "dueDate": "2026-09-20T01:56:07.027Z", "status": "pending", "paidAmount": 3000, "paidAt": null },
+    { "period": 3, "amount": 10000, "dueDate": "2026-10-20T01:56:07.027Z", "status": "pending", "paidAmount": 0, "paidAt": null }
+  ]
+}
+```
+
+`status` on the loan itself progresses `approved` → `repaying` (first deduction applied) → `repaid` (every period `"paid"`).
+
+**Errors**: `401` (missing/invalid bearer token), `403` (valid lender token, but not this loan's lender), `404` (no loan with that id).
+
+---
+
+## `POST /api/webhooks/monnify` — repayment deduction (milestone 15 addition)
+
+No new route — this is a synchronous side effect added to the existing webhook handler (`app/api/webhooks/monnify/route.ts`), right after the milestone 8 fraud engine call, before acking. See [lib/repayment.ts](lib/repayment.ts).
+
+**Mechanism**: on every successfully-inserted transaction, look up the paying merchant's loans with `status` `approved` or `repaying`. For each, apply the transaction's full `amount` as a waterfall against the schedule's periods in order: the oldest unpaid period absorbs as much as it needs (`paidAmount` accumulates), any remainder cascades into the next period, and so on until the transaction amount is exhausted or the schedule runs out. A period flips to `"paid"` (with `paidAt` set) once its `paidAmount` reaches its `amount`. The loan's own `status` becomes `"repaying"` on first progress and `"repaid"` once every period is `"paid"`. This is genuinely tied to arriving revenue (a transaction directly funds whichever period is currently owed), not to elapsed calendar time, and needs no separate "amount accumulated since last update" bookkeeping — progress already lives in each period's `paidAmount` between calls.
+
+**Explicitly does not touch** `transactions`, `fraud_flags`, or anything `verifiedRevenue`/`grossInflow` computations read (`lib/revenue.ts`, `lib/confidence.ts`) — this is loan bookkeeping only. Confirmed live: revenue figures before and after a deduction are identical apart from the transaction's own amount being counted as normal (see `handoff.md` milestone 15 entry for the exact before/after numbers).
+
+**Failure isolation**: wrapped in its own `try/catch`, same as the fraud engine call above it — a repayment-deduction error is logged (`console.error`) but never blocks or delays the webhook's `200` ack.
 
 ---
 

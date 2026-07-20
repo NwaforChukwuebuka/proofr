@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { authenticateAsLender } from "@/lib/lender-auth";
 
 /**
- * Milestone 12. `mockRepaymentSchedule` here is a placeholder — an even
- * split of the loan amount across 3 monthly periods, no interest/fees
- * modeled — the same way milestone 2 left `monnifyAccountNumber: null` for
- * milestone 4 to fill in for real. Milestone 15 owns the actual "simulated
- * deduction from future revenue" logic and is expected to replace this
- * computation entirely, not extend it.
+ * Milestone 12/15. The schedule *shape* (3 even monthly periods, no
+ * interest/fees) is still built here at approval time — that part was never
+ * the placeholder. What milestone 12 explicitly left as a placeholder, and
+ * milestone 15's lib/repayment.ts now replaces, is the progress tracking:
+ * each period starts "pending" with paidAmount 0 and is only ever advanced
+ * by lib/repayment.ts's applyRepaymentDeductions, called from the webhook
+ * route as real merchant revenue arrives — never by elapsed time.
  */
 const MOCK_REPAYMENT_PERIODS = 3;
 
@@ -20,6 +21,9 @@ function buildMockRepaymentSchedule(amount: number, approvedAt: Date) {
       period: i + 1,
       amount: perPeriod,
       dueDate: dueDate.toISOString(),
+      status: "pending" as const,
+      paidAmount: 0,
+      paidAt: null as string | null,
     };
   });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase";
 import { verifyWebhookSignature } from "@/lib/monnify";
 import { runFraudChecks, type TransactionRecord } from "@/lib/fraud";
+import { applyRepaymentDeductions } from "@/lib/repayment";
 
 /**
  * Monnify transaction webhook. Public route — no session, auth is the
@@ -141,6 +142,20 @@ export async function POST(request: Request) {
     console.error(
       `Fraud engine error for transaction ${inserted.id}:`,
       fraudError
+    );
+  }
+
+  // Milestone 15: simulated repayment deduction against any of this
+  // merchant's active (approved/repaying) loans, tied to this real incoming
+  // transaction amount. Never touches `transactions` or revenue/fraud
+  // tables — see lib/repayment.ts. Same non-blocking-failure treatment as
+  // the fraud engine above: must not delay or fail the webhook ack.
+  try {
+    await applyRepaymentDeductions(supabase, inserted.merchant_id, Number(inserted.amount));
+  } catch (repaymentError) {
+    console.error(
+      `Repayment deduction error for transaction ${inserted.id}:`,
+      repaymentError
     );
   }
 
