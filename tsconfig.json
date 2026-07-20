@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "awesome-design-skills",
+    "design-system",
+    "gsap-skills",
+    "postman",
+    "skills",
+    "ui-ux-pro-max-skill"
+  ]
 }

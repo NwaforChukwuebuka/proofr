@@ -7,6 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabaseClient } from "@/lib/supabase";
 import { TrendChart } from "./trend-chart";
 import { FraudFlagsCard, type FraudFlag } from "./fraud-flags";
+import { TransactionsCard, type Transaction } from "./transactions-list";
 
 interface Merchant {
   id: string;
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [flags, setFlags] = useState<FraudFlag[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [justUpdated, setJustUpdated] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,6 +76,22 @@ export default function DashboardPage() {
       return;
     }
     setFlags((data ?? []) as unknown as FraudFlag[]);
+  }, []);
+
+  const fetchTransactions = useCallback(async (merchantId: string) => {
+    const supabase = getBrowserSupabaseClient();
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, amount, payer_name, payer_account, created_at")
+      .eq("merchant_id", merchantId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Failed to load transactions", error);
+      return;
+    }
+    setTransactions((data ?? []) as Transaction[]);
   }, []);
 
   const fetchConsent = useCallback(async (merchantId: string, accessToken: string) => {
@@ -146,6 +164,7 @@ export default function DashboardPage() {
           ),
           fetchFlags((merchantRow as Merchant).id),
           fetchConsent((merchantRow as Merchant).id, currentSession.access_token),
+          fetchTransactions((merchantRow as Merchant).id),
         ]);
       }
 
@@ -156,7 +175,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, fetchRevenue, fetchFlags, fetchConsent]);
+  }, [router, fetchRevenue, fetchFlags, fetchConsent, fetchTransactions]);
 
   // Granularity toggle re-fetch.
   useEffect(() => {
@@ -186,6 +205,7 @@ export default function DashboardPage() {
         () => {
           fetchRevenue(merchant.id, session.access_token, granularity);
           fetchFlags(merchant.id);
+          fetchTransactions(merchant.id);
           setJustUpdated(true);
           setTimeout(() => setJustUpdated(false), 3000);
         }
@@ -264,17 +284,20 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-brand">
-        <p className="text-sm font-medium text-blue-100">Loading dashboard…</p>
+      <div className="flex flex-1 items-center justify-center bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-6">
+        <p className="text-sm font-medium text-zinc-500">Loading dashboard…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-brand px-6 text-center">
-        <p className="text-sm font-medium text-blue-100">{error}</p>
-        <Link href="/login" className="text-sm font-semibold text-white underline">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-6 text-center">
+        <p className="text-sm font-medium text-zinc-600">{error}</p>
+        <Link
+          href="/login"
+          className="cursor-pointer text-sm font-semibold text-brand underline decoration-brand/35 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
           Back to login
         </Link>
       </div>
@@ -283,206 +306,225 @@ export default function DashboardPage() {
 
   if (!merchant) return null;
 
+  const flaggedTransactionIds = new Set(
+    flags.filter((f) => f.status === "open").map((f) => f.transactions.id)
+  );
+
   return (
-    <div className="flex flex-1 flex-col items-center bg-brand px-4 py-10 sm:px-6">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm font-medium text-blue-100 hover:text-white">
-            PROOFR
+    <main className="flex flex-1 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+      <div className="mx-auto w-full max-w-7xl">
+        <header className="flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-extrabold text-white">
+              P
+            </span>
+            <span className="font-display tracking-tight text-zinc-900">PROOFR</span>
           </Link>
           <button
             type="button"
             onClick={signOut}
-            className="text-sm font-medium text-blue-100 hover:text-white"
+            className="cursor-pointer rounded-md px-2 py-1 text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             Sign out
           </button>
-        </div>
+        </header>
 
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
+        <h1 className="font-display mt-6 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
           {merchant.business_name}
         </h1>
 
         {merchant.approval_status !== "approved" ? (
-          <div className="mt-4 rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-tint text-2xl text-brand">
-              &#9203;
+          <section className="mt-5 max-w-xl border-l-2 border-brand bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-8">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand/20 bg-brand-tint text-brand">
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                className="h-7 w-7"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
+                <path d="M12 6v6l4 2" />
+              </svg>
             </div>
-            <h2 className="mt-4 text-lg font-bold text-zinc-900">
+            <h2 className="font-display mt-4 text-lg font-bold text-zinc-900">
               Application pending approval
             </h2>
             <p className="mt-2 text-sm text-zinc-500">
-              Your account is still under review. Once approved, your
-              dedicated virtual account and revenue dashboard will show up
-              here.
+              Your account is still under review. Once approved, your dedicated
+              virtual account and revenue dashboard will show up here.
             </p>
-          </div>
+          </section>
         ) : (
-          <div className="mt-4 space-y-4">
-            {/* Virtual account card */}
-            <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <p className="text-xs font-medium text-zinc-400">
-                Your dedicated account
-              </p>
-              {merchant.monnify_account_number ? (
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="text-2xl font-extrabold tracking-tight text-zinc-900">
-                    {merchant.monnify_account_number}
+          <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(20rem,1fr)] lg:items-start lg:gap-6">
+            <div className="space-y-5">
+              <section className="border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 lg:p-7">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Verified revenue
                   </p>
-                  <button
-                    type="button"
-                    onClick={copyAccountNumber}
-                    className="shrink-0 rounded-full bg-brand-tint px-3 py-1.5 text-xs font-semibold text-brand hover:bg-blue-100"
-                  >
-                    {copied ? "Copied" : "Copy"}
-                  </button>
+                  {justUpdated && (
+                    <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-700">
+                      New payment
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-500">
-                  Your virtual account is still being issued.
+                <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-zinc-950 lg:text-5xl">
+                  {revenue ? formatNaira(revenue.verifiedRevenue) : "—"}
                 </p>
-              )}
-              <p className="mt-2 text-xs text-zinc-400">
-                Share this account number with customers to get paid directly.
-              </p>
-            </div>
-
-            {/* Revenue totals card */}
-            <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-zinc-400">
-                  Verified revenue
+                <p className="mt-1 text-sm text-zinc-500">
+                  Gross inflow: {revenue ? formatNaira(revenue.grossInflow) : "—"}
                 </p>
-                {justUpdated && (
-                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-700">
-                    New payment
-                  </span>
+                {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
+                  <p className="mt-1 text-sm font-medium text-red-600">
+                    {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)} excluded
+                    due to flagged activity
+                  </p>
                 )}
-              </div>
-              <p className="mt-1 text-3xl font-extrabold text-zinc-900">
-                {revenue ? formatNaira(revenue.verifiedRevenue) : "—"}
-              </p>
-              <p className="mt-1 text-xs text-zinc-400">
-                Gross inflow: {revenue ? formatNaira(revenue.grossInflow) : "—"}
-              </p>
-              {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
-                <p className="mt-1 text-xs font-medium text-red-600">
-                  {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)}{" "}
-                  excluded due to flagged activity
-                </p>
-              )}
 
-              <div className="mt-5 flex items-center justify-between">
-                <p className="text-xs font-semibold text-zinc-500">Trend</p>
-                <div className="flex rounded-full bg-brand-tint p-0.5 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setGranularity("daily")}
-                    className={`rounded-full px-3 py-1 transition ${
-                      granularity === "daily"
-                        ? "bg-brand text-white"
-                        : "text-brand"
-                    }`}
-                  >
-                    Daily
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGranularity("monthly")}
-                    className={`rounded-full px-3 py-1 transition ${
-                      granularity === "monthly"
-                        ? "bg-brand text-white"
-                        : "text-brand"
-                    }`}
-                  >
-                    Monthly
-                  </button>
+                <div className="mt-5 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    Trend
+                  </p>
+                  <div className="flex rounded-full bg-brand-tint p-0.5 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setGranularity("daily")}
+                      className={`cursor-pointer rounded-full px-3 py-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                        granularity === "daily" ? "bg-brand text-white" : "text-brand"
+                      }`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGranularity("monthly")}
+                      className={`cursor-pointer rounded-full px-3 py-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                        granularity === "monthly" ? "bg-brand text-white" : "text-brand"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-3">
-                <TrendChart trend={revenue?.trend ?? []} />
-              </div>
+                <div className="mt-3">
+                  <TrendChart trend={revenue?.trend ?? []} />
+                </div>
+              </section>
+
+              <TransactionsCard
+                transactions={transactions}
+                flaggedTransactionIds={flaggedTransactionIds}
+              />
+
+              <FraudFlagsCard flags={flags} />
             </div>
 
-            <FraudFlagsCard flags={flags} />
+            <aside className="space-y-5 lg:sticky lg:top-6">
+              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Dedicated account
+                </p>
+                {merchant.monnify_account_number ? (
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="font-mono text-2xl font-bold tracking-tight text-zinc-900">
+                      {merchant.monnify_account_number}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={copyAccountNumber}
+                      className="cursor-pointer shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-zinc-500">
+                    Your virtual account is still being issued.
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-zinc-500">
+                  Share this account number with customers to get paid directly.
+                </p>
+              </section>
 
-            {/* Proof-of-Revenue report entry point */}
-            <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <p className="text-xs font-medium text-zinc-400">
-                Proof-of-Revenue report
-              </p>
-              <p className="mt-1 text-sm text-zinc-500">
-                Generate a shareable revenue report for a lender, showing your
-                confidence score, verified revenue, and any fraud flags.
-              </p>
-              <button
-                type="button"
-                onClick={generateReport}
-                disabled={generatingReport}
-                className="mt-4 w-full rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-              >
-                {generatingReport ? "Generating…" : "Generate report"}
-              </button>
-              <Link
-                href={`/report/${merchant.id}`}
-                className="mt-2 block text-center text-xs font-semibold text-brand underline"
-              >
-                View my latest report
-              </Link>
-            </div>
-
-            {/* Third-party credit lookup consent */}
-            <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <p className="text-xs font-medium text-zinc-400">
-                Third-party credit lookups
-              </p>
-              <p className="mt-1 text-sm text-zinc-500">
-                Lets external platforms you haven&apos;t directly shared a
-                report with look up your credit score and recommended loan
-                amount by your phone number — never your revenue details or
-                transaction history. Off by default; you can turn this off
-                again at any time.
-              </p>
-              <div className="mt-4 flex items-center justify-between rounded-2xl bg-brand-tint/60 px-4 py-3">
-                <span className="text-sm font-semibold text-zinc-700">
-                  {publicApiConsent?.consentGranted
-                    ? "Enabled"
-                    : "Disabled"}
-                </span>
+              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Proof-of-Revenue report
+                </p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Generate a shareable revenue report for a lender, showing your
+                  confidence score, verified revenue, and any fraud flags.
+                </p>
                 <button
                   type="button"
-                  disabled={savingConsent || publicApiConsent === null}
-                  onClick={() =>
-                    togglePublicApiConsent(!publicApiConsent?.consentGranted)
-                  }
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-60 ${
-                    publicApiConsent?.consentGranted
-                      ? "bg-white text-red-600 hover:bg-red-50"
-                      : "bg-brand text-white hover:bg-brand-dark"
-                  }`}
+                  onClick={generateReport}
+                  disabled={generatingReport}
+                  className="mt-4 min-h-11 w-full cursor-pointer rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
                 >
-                  {savingConsent
-                    ? "Saving…"
-                    : publicApiConsent?.consentGranted
-                    ? "Turn off"
-                    : "Turn on"}
+                  {generatingReport ? "Generating…" : "Generate report"}
                 </button>
-              </div>
-              {publicApiConsent?.consentGranted && publicApiConsent.consentedAt && (
-                <p className="mt-2 text-xs text-zinc-400">
-                  Enabled since{" "}
-                  {new Date(publicApiConsent.consentedAt).toLocaleDateString("en-NG", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                <Link
+                  href={`/report/${merchant.id}`}
+                  className="mt-3 block text-center text-xs font-semibold text-brand underline decoration-brand/35 underline-offset-4 transition hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  View my latest report
+                </Link>
+              </section>
+
+              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Third-party credit lookups
                 </p>
-              )}
-            </div>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Lets external platforms you haven&apos;t directly shared a report with
+                  look up your credit score and recommended loan amount by your phone
+                  number, never your revenue details or transaction history. Off by
+                  default; you can turn this off again at any time.
+                </p>
+                <div className="mt-4 flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3 ring-1 ring-zinc-200">
+                  <span className="text-sm font-semibold text-zinc-700">
+                    {publicApiConsent?.consentGranted ? "Enabled" : "Disabled"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={savingConsent || publicApiConsent === null}
+                    onClick={() =>
+                      togglePublicApiConsent(!publicApiConsent?.consentGranted)
+                    }
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60 ${
+                      publicApiConsent?.consentGranted
+                        ? "bg-white text-red-600 ring-1 ring-zinc-200 hover:bg-red-50"
+                        : "bg-brand text-white hover:bg-brand-dark"
+                    }`}
+                  >
+                    {savingConsent
+                      ? "Saving…"
+                      : publicApiConsent?.consentGranted
+                        ? "Turn off"
+                        : "Turn on"}
+                  </button>
+                </div>
+                {publicApiConsent?.consentGranted && publicApiConsent.consentedAt && (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Enabled since{" "}
+                    {new Date(publicApiConsent.consentedAt).toLocaleDateString("en-NG", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
+              </section>
+            </aside>
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
