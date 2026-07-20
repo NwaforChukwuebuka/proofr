@@ -112,6 +112,12 @@ export default function LenderMerchantPage() {
   const [approving, setApproving] = useState(false);
   const [loanError, setLoanError] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<RepaymentPeriod[] | null>(null);
+  const [loanTerms, setLoanTerms] = useState<{
+    interestRate: number;
+    termMonths: number;
+    totalRepayment: number;
+    rationale: string[];
+  } | null>(null);
 
   const loadReport = useCallback(
     async (token: string) => {
@@ -219,8 +225,13 @@ export default function LenderMerchantPage() {
       }
       const approved = (await approveRes.json()) as {
         mockRepaymentSchedule: RepaymentPeriod[];
+        interestRate: number;
+        termMonths: number;
+        totalRepayment: number;
+        rationale: string[];
       };
       setSchedule(approved.mockRepaymentSchedule);
+      setLoanTerms(approved);
     } finally {
       setApproving(false);
     }
@@ -449,12 +460,22 @@ export default function LenderMerchantPage() {
                   Loan approved.
                 </p>
                 <p className="mt-3 text-xs font-semibold text-zinc-500">
-                  Estimated repayment schedule
+                  Repayment schedule — {loanTerms?.termMonths ?? schedule.length} months at{" "}
+                  {loanTerms ? Math.round(loanTerms.interestRate * 100) : 0}% flat interest
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  A rough placeholder — an even split with no interest/fees
-                  modeled, not real amortization.
-                </p>
+                {loanTerms ? (
+                  <ul className="mt-1 space-y-0.5">
+                    {loanTerms.rationale.map((line) => (
+                      <li key={line} className="text-[11px] text-zinc-400">
+                        · {line}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Terms and interest are risk-based (credit score tiered), simulated — no real disbursement or amortization.
+                  </p>
+                )}
                 <div className="mt-2 space-y-1.5">
                   {schedule.map((p) => (
                     <div

@@ -22,7 +22,9 @@ export async function GET(
 
   const { data: loan, error } = await supabase
     .from("loans")
-    .select("id, lender_id, status, mock_repayment_schedule")
+    .select(
+      "id, lender_id, status, mock_repayment_schedule, interest_rate, term_months, credit_score_at_approval, recommended_loan_amount_at_approval"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -40,5 +42,9 @@ export async function GET(
     loanId: loan.id,
     status: loan.status,
     mockRepaymentSchedule: loan.mock_repayment_schedule,
+    interestRate: loan.interest_rate,
+    termMonths: loan.term_months,
+    creditScoreAtApproval: loan.credit_score_at_approval,
+    recommendedLoanAmountAtApproval: loan.recommended_loan_amount_at_approval,
   });
 }

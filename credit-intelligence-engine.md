@@ -63,10 +63,10 @@ access path and (where relevant) legal basis exist:
 - Device, location, or telecom-tenure data — no integration exists;
   telecom tenure specifically has no self-serve access path today.
 - Risk-based repayment *terms* (variable interest, variable term
-  length) — milestone 19 (below) added a recommended *amount*, but
+  length) — milestone 19 added a recommended *amount*, but
   deliberately kept the existing fixed 3-month, no-interest schedule
-  shape (`lib/repayment.ts`) rather than also varying terms. Two new
-  numbers to explain in one milestone was judged worse than one.
+  shape (`lib/repayment.ts`) rather than also varying terms in the same
+  milestone. Milestone 20 (below) closes this gap.
 
 ## Recommended loan amount (milestone 19)
 
@@ -101,6 +101,95 @@ change the lending outcome, not just sit next to it as a badge.
 
 **Live-verified**, not just unit-tested — see `handoff.md`'s milestone
 19 entry for the real numbers observed.
+
+## Risk-based loan terms (milestone 20)
+
+Milestones 12/15 fixed every mock loan at 3 months, 0% interest,
+regardless of the merchant's `credit_score` — a strong-scored merchant
+and a never-scored one got identical terms. `lib/loanTerms.ts`'s
+`computeLoanTerms` replaces that fixed shape with three named tiers:
+
+| Tier | `credit_score` | Term | Interest (flat, non-compounding) |
+|---|---|---|---|
+| Strong | ≥ 80 | 6 months | 5% |
+| Fair | 50–79 | 4 months | 10% |
+| Weak/unscored | < 50 or no score yet | 3 months | 15% |
+
+Same honesty stance as the recommendation formula above: no real
+default-rate data exists to derive these tiers statistically — they're
+named, stated numbers a lender can see in each approval's `rationale`
+array, not a fabricated precision model. A merchant with no report yet
+gets the most conservative tier, not a default in either direction.
+`lib/repayment.ts`'s `applyRepaymentDeductions` needed **no change** —
+it already operates generically over however many periods a schedule
+has, since it reads `mock_repayment_schedule` at runtime rather than
+assuming a fixed length.
+
+## Outcome-tracking infrastructure (milestone 21)
+
+Recalibrating the credit score, the recommended amount, or the loan
+tiers above against *real* repayment outcomes is blocked structurally:
+every loan today is `lib/repayment.ts`'s simulated deduction, not a
+real disbursement, so there is no real-world default/repayment signal
+to learn from yet. Rather than either (a) fabricate a recalibration
+that has nothing real to calibrate against, or (b) build nothing and
+lose the chance to capture prediction data as it happens, milestone 21
+adds pure infrastructure: `loans.credit_score_at_approval` and
+`loans.recommended_loan_amount_at_approval` snapshot what the model
+predicted at the exact moment a loan was approved (see
+[data-model.md](data-model.md)), and `GET /api/admin/loan-outcomes`
+(admin-secret-gated, same pattern as the milestone 14 fraud queue)
+joins that prediction against each loan's current derived outcome
+(`repaid_full` / `delinquent` / `in_progress`, computed fresh from
+`mock_repayment_schedule`'s due dates vs now, never stored/cached).
+
+This changes nothing about how any score or recommendation is
+computed today — it's a data-capture pipe, not a model update. The
+moment real loan outcomes exist (real disbursement, real default
+tracking), recalibrating becomes a query against this table instead of
+a data-modeling exercise started from scratch.
+
+## Phase 4: portable, cross-platform identity (milestone 22)
+
+The roadmap's "financial identity network" phase, scoped for a first
+version as: **`GET /api/public/score?phone=<E.164>`**, letting a
+third-party platform — not a provisioned PROOFR lender with a
+Supabase session — look up a merchant's score by phone number. This is
+the "Stripe for credit scoring" positioning from the original strategy
+discussion made concrete: PROOFR's signal becomes queryable by anyone
+vetted to integrate, not just the merchant's own lender-portal
+relationships.
+
+**Deliberately narrow, on purpose**:
+- **Auth is API-key, not open/public.** `api_clients` are provisioned
+  manually via `scripts/provision-api-client.ts` — no self-serve
+  signup, same posture milestone 12 established for lenders. A raw key
+  is shown once at provisioning time and never stored (only its
+  SHA-256 hash lives in the database).
+- **Only `approval_status: "approved"` merchants are queryable** — an
+  unapproved/rejected merchant's existence isn't exposed externally.
+- **Response is capped at the same three summary numbers** an
+  authenticated lender already sees (`confidenceScore`, `creditScore`,
+  `recommendedLoanAmount`) — never revenue figures, score breakdowns,
+  fraud flag detail, or transaction data. A third party with no vetted
+  relationship to a specific merchant gets *less* than a lender that
+  merchant's report was actually shared with, not the same amount.
+- **Every query is logged** (`api_access_log`) — found, not-found, or
+  unauthorized — since no rate-limiting exists yet; this is the only
+  abuse-detection mechanism today.
+
+**Known, unresolved gap — stated plainly, not glossed over**: this
+does not implement per-merchant consent or an opt-out. Any provisioned
+`api_client` can query any approved merchant's phone number without
+that merchant being notified or able to block it. This mirrors how
+lender search already works internally (any lender can already look
+up any merchant), extended outward to external platforms — but "a
+lender" and "an unknown third-party platform with no relationship to
+this merchant at all" are different in kind, not just degree. This is
+explicitly flagged as needing resolution (merchant consent flow, an
+opt-out mechanism, or at minimum a disclosure in the merchant-facing
+product) before any real external platform is onboarded — not treated
+as already solved by this milestone shipping.
 
 ## Output shape
 

@@ -1,6 +1,6 @@
 # PROOFR — Data Model (Supabase / Postgres)
 
-Supports [plan.md](plan.md) milestones 1–19. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
+Supports [plan.md](plan.md) milestones 1–22. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
 
 ## `merchants`
 
@@ -84,10 +84,40 @@ Supports plan.md milestones 13 and 15 (mock approval + simulated repayment).
 | `amount` | numeric | |
 | `status` | text | `pending` \| `approved` \| `repaying` \| `repaid` |
 | `mock_repayment_schedule` | jsonb | Simulated deduction plan, not real disbursement |
+| `interest_rate` | numeric, nullable | Milestone 20. Flat rate chosen at approval by `lib/loanTerms.ts`'s credit-score tier — see [credit-intelligence-engine.md](credit-intelligence-engine.md) |
+| `term_months` | integer, nullable | Milestone 20. Term length chosen the same way |
+| `credit_score_at_approval` | numeric, nullable | Milestone 21. Snapshot of `credit_score` at the moment this loan was approved — for future outcome recalibration, see [credit-intelligence-engine.md](credit-intelligence-engine.md) |
+| `recommended_loan_amount_at_approval` | numeric, nullable | Milestone 21. Same snapshot idea, for `recommended_loan_amount` |
 | `created_at`, `approved_at` | timestamptz | |
+
+## `api_clients`
+
+Milestone 22. Third-party platforms (not PROOFR lenders) granted API-key access to `GET /api/public/score` — see [credit-intelligence-engine.md](credit-intelligence-engine.md)'s "Phase 4" section. Provisioned manually via `scripts/provision-api-client.ts`, no public signup.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid, PK | |
+| `name` | text | Platform name |
+| `api_key_hash` | text, unique | SHA-256 hash of the raw key — the raw key itself is never stored |
+| `created_at` | timestamptz | |
+| `revoked_at` | timestamptz, nullable | Set to revoke access; `null` = active |
+
+## `api_access_log`
+
+Milestone 22. Records every `GET /api/public/score` query, found or not — the only abuse-detection mechanism until real rate-limiting is built.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid, PK | |
+| `api_client_id` | uuid, FK → `api_clients.id` | |
+| `queried_phone` | text | |
+| `merchant_id` | uuid, nullable, FK → `merchants.id` | `null` if no matching approved merchant |
+| `response_status` | integer | HTTP status returned |
+| `created_at` | timestamptz | |
 
 ## Row-Level Security (RLS)
 
 - **Merchants**: can only `select`/`update` rows where `merchants.auth_user_id = auth.uid()`; same scoping cascades to their own `transactions`, `fraud_flags`, `reports`.
 - **Lenders**: can `select` any `merchants`/`reports` row (search is core to the product) but cannot `update`/`delete` merchant data; can `insert`/`update` only their own `loans` rows.
 - **Admin**: bypasses RLS via `SUPABASE_SERVICE_ROLE_KEY` in server-side API routes only — no client-side admin key exposure.
+- **`api_clients`/`api_access_log`**: RLS enabled, no policies defined (deny-all default) — only ever touched by server code via the service-role client, never by an anon/authenticated Supabase session. Milestone 22.

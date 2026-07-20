@@ -99,3 +99,15 @@ Reframes the product per the PRD's revised Vision (see [PROOFR_MVP_PRD.md](PROOF
     `lib/loanRecommendation.ts` — translates `credit_score` + verified revenue into an actual naira figure (25% of average verified monthly revenue, scaled by credit score, over the existing 3-month no-interest term), with a documented rationale since no real expense data exists to measure true repayment capacity. Stored on `reports`, surfaced on the report page and lender pages, and pre-fills the lender's loan-amount input on approval.
     *Done when*: a generated report includes a recommended amount with its rationale, the figure matches across the report/search/detail endpoints, and the lender merchant-detail page's loan input pre-fills with it. **Live-verified** against the real Supabase + Monnify sandbox project — see `handoff.md`.
 
+20. `[x]` **(Backend) Risk-based loan terms**
+    `lib/loanTerms.ts` — replaces the fixed 3-month/0%-interest mock schedule with three credit-score tiers (Strong ≥80: 6mo/5%, Fair 50-79: 4mo/10%, Weak/unscored <50: 3mo/15%), each with a plain-language rationale. Wired into `POST /api/loans/:id/approve`, which now fetches the merchant's latest `credit_score` at approval time. `lib/repayment.ts` needed no change.
+    *Done when*: an approved loan's term/interest matches the merchant's actual credit-score tier. **Live-verified** — see `handoff.md`.
+
+21. `[x]` **(Backend) Outcome-tracking infrastructure**
+    `loans.credit_score_at_approval`/`loans.recommended_loan_amount_at_approval` snapshot what the model predicted at approval time; `GET /api/admin/loan-outcomes` joins that against each loan's derived outcome (`repaid_full`/`delinquent`/`in_progress`/`not_yet_approved`). Does not recalibrate anything — real repayment-outcome data doesn't exist yet (every loan is still simulated) — this makes recalibration a query away once it does.
+    *Done when*: the admin endpoint correctly reports a real loan's predicted-vs-actual figures and derived outcome. **Live-verified** — see `handoff.md`.
+
+22. `[x]` **(Backend) Public credit-lookup API (Phase 4 v1)**
+    `GET /api/public/score?phone=<E.164>` — API-key-gated (`api_clients`, provisioned via `scripts/provision-api-client.ts`, no public signup), scoped to approved merchants only, capped at the same three summary fields a lender sees (no revenue/breakdown/transaction data), every query logged to `api_access_log`. **Known unresolved gap, not silently treated as solved**: no per-merchant consent or opt-out mechanism exists yet — flagged in `credit-intelligence-engine.md` as needing resolution before any real third-party platform is onboarded.
+    *Done when*: a provisioned key can query an approved merchant's score and gets exactly the capped fields; bad/missing keys, unapproved merchants, and malformed phone numbers are all correctly rejected; every query is logged. **Live-verified** — see `handoff.md`.
+

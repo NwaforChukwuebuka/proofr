@@ -287,17 +287,30 @@ Public route — no session. Called directly by Monnify.
 **Response `200`**
 ```json
 {
-  "loanId": "34aaf648-aa9e-4161-a3e3-a94bac56896d",
+  "loanId": "31545b04-9276-4b34-8341-c083b3b42215",
   "status": "approved",
   "mockRepaymentSchedule": [
-    { "period": 1, "amount": 30000, "dueDate": "2026-08-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null },
-    { "period": 2, "amount": 30000, "dueDate": "2026-09-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null },
-    { "period": 3, "amount": 30000, "dueDate": "2026-10-20T00:31:20.164Z", "status": "pending", "paidAmount": 0, "paidAt": null }
+    { "period": 1, "amount": 27500, "dueDate": "2026-08-20T17:19:10.322Z", "status": "pending", "paidAmount": 0, "paidAt": null },
+    { "period": 2, "amount": 27500, "dueDate": "2026-09-20T17:19:10.322Z", "status": "pending", "paidAmount": 0, "paidAt": null },
+    { "period": 3, "amount": 27500, "dueDate": "2026-10-20T17:19:10.322Z", "status": "pending", "paidAmount": 0, "paidAt": null },
+    { "period": 4, "amount": 27500, "dueDate": "2026-11-20T17:19:10.322Z", "status": "pending", "paidAmount": 0, "paidAt": null }
+  ],
+  "interestRate": 0.1,
+  "termMonths": 4,
+  "totalRepayment": 110000,
+  "rationale": [
+    "Credit score 71/100 → \"Fair\" tier",
+    "Interest: 10% flat, added to principal (not compounding)",
+    "Term: 4 months",
+    "Total repayment: ₦110,000 (principal ₦100,000 + interest)"
   ]
 }
 ```
+Real, live-verified response shown above (see `handoff.md`'s milestone 20 entry) — not illustrative numbers.
 
-**The schedule's *shape*** (even 3-way split of `amount`, no interest/fees, one period per month starting the month after approval) is still the milestone 12 placeholder math — milestone 15 didn't redesign it, per its scope. What milestone 15 added is the **progress tracking** on each period (`status`, `paidAmount`, `paidAt`, all starting `"pending"`/`0`/`null`) — see `POST /api/webhooks/monnify` below for how these advance.
+**Milestone 20 update**: the schedule's shape is no longer a fixed 3-month/0%-interest placeholder. `app/api/loans/[id]/approve/route.ts` now fetches the merchant's most recently generated report's `credit_score` and calls `lib/loanTerms.ts`'s `computeLoanTerms`, which picks a term/interest tier (Strong ≥80: 6mo/5%; Fair 50-79: 4mo/10%; Weak/unscored <50 or no report: 3mo/15% — see `credit-intelligence-engine.md`). `interestRate`, `termMonths`, `totalRepayment`, and `rationale` (plain-language lines, same pattern as the credit-score/loan-recommendation breakdowns) are new in the response; `mockRepaymentSchedule` now has however many periods the chosen tier calls for, not always 3. `lib/repayment.ts`'s `applyRepaymentDeductions` needed no change — it already reads schedule length generically.
+
+**Milestone 21 update**: the loan row additionally snapshots `credit_score_at_approval` and `recommended_loan_amount_at_approval` (not in this response, but readable via `GET /api/admin/loan-outcomes` below) — see `credit-intelligence-engine.md`'s outcome-tracking section.
 
 **Errors**: `401`/`403` — as above (including a different lender's own token, valid but not this loan's owner). `404` — no loan with that id.
 
@@ -319,11 +332,15 @@ Fetch a loan's current state — the only way to observe repayment progress afte
     { "period": 1, "amount": 10000, "dueDate": "2026-08-20T01:56:07.027Z", "status": "paid", "paidAmount": 10000, "paidAt": "2026-07-20T01:56:12.951Z" },
     { "period": 2, "amount": 10000, "dueDate": "2026-09-20T01:56:07.027Z", "status": "pending", "paidAmount": 3000, "paidAt": null },
     { "period": 3, "amount": 10000, "dueDate": "2026-10-20T01:56:07.027Z", "status": "pending", "paidAmount": 0, "paidAt": null }
-  ]
+  ],
+  "interestRate": 0.1,
+  "termMonths": 3,
+  "creditScoreAtApproval": 71,
+  "recommendedLoanAmountAtApproval": 37000
 }
 ```
 
-`status` on the loan itself progresses `approved` → `repaying` (first deduction applied) → `repaid` (every period `"paid"`).
+`status` on the loan itself progresses `approved` → `repaying` (first deduction applied) → `repaid` (every period `"paid"`). **Milestone 20/21 update**: `interestRate`/`termMonths` (chosen at approval, milestone 20) and `creditScoreAtApproval`/`recommendedLoanAmountAtApproval` (the milestone 21 prediction snapshot) are now included.
 
 **Errors**: `401` (missing/invalid bearer token), `403` (valid lender token, but not this loan's lender), `404` (no loan with that id).
 
@@ -347,6 +364,62 @@ There is **no public lender signup route** — not in the frozen `api-contracts.
 
 ---
 
+## `GET /api/admin/loan-outcomes`
+*Milestone 21. Implemented in [app/api/admin/loan-outcomes/route.ts](app/api/admin/loan-outcomes/route.ts).*
+
+**Auth**: `x-admin-secret` header, same shared-secret gate as `GET /api/admin/fraud-queue`.
+
+**Response `200`**
+```json
+[
+  {
+    "loanId": "31545b04-9276-4b34-8341-c083b3b42215",
+    "merchantId": "297f322c-33cc-425e-bde5-dcdcd1f75668",
+    "businessName": "Suya Spot",
+    "amount": 100000,
+    "status": "approved",
+    "outcome": "in_progress",
+    "predicted": { "creditScoreAtApproval": 71, "recommendedLoanAmountAtApproval": 37000, "interestRate": 0.1, "termMonths": 4 },
+    "actual": { "amountApproved": 100000, "amountRecommendedDelta": 63000 },
+    "createdAt": "2026-07-20T17:19:03.546793+00:00",
+    "approvedAt": "2026-07-20T17:19:10.322+00:00"
+  }
+]
+```
+`outcome` is derived fresh on every request (not stored) from `status` + whether any `mock_repayment_schedule` period is unpaid and past its `dueDate`: `"not_yet_approved"` (still `pending`), `"in_progress"` (no overdue unpaid periods), `"delinquent"` (at least one overdue unpaid period), `"repaid_full"` (`status: "repaid"`). `amountRecommendedDelta` is `amount - recommendedLoanAmountAtApproval`, `null` if the merchant had no report at approval time — how far the lender's actual decision diverged from what the model suggested, the exact pairing a future recalibration would query. Live-verified: a freshly-approved loan correctly came back `"in_progress"` with matching predicted/actual figures — see `handoff.md`'s milestone 21 entry.
+
+**Errors**: `401` — missing/wrong `x-admin-secret`. `500` — `ADMIN_API_SECRET` not configured, or a Supabase error.
+
+---
+
+## `GET /api/public/score?phone=<E.164>`
+*Milestone 22. Implemented in [app/api/public/score/route.ts](app/api/public/score/route.ts), auth in [lib/public-api-auth.ts](lib/public-api-auth.ts).*
+
+The Phase 4 "portable, cross-platform identity" endpoint — see `credit-intelligence-engine.md`'s Phase 4 section for the full rationale and the explicitly-unresolved consent/opt-out gap.
+
+**Auth**: header `x-api-key: <raw key>` — checked against `api_clients.api_key_hash` (SHA-256 of the raw key). No Supabase session involved; callers are third-party platforms, not PROOFR lenders. Keys are provisioned only via `scripts/provision-api-client.ts` (no public signup, same posture as milestone 12's lender provisioning).
+
+**Request**: `GET /api/public/score?phone=+2348012345678` — `phone` must match `merchants.phone` exactly and be E.164-shaped (`^\+\d{8,15}$`).
+
+**Response `200`** (real, live-verified example)
+```json
+{
+  "merchantId": "f48cdb5e-1b0a-4e2d-b033-96902c3a4844",
+  "businessName": "TEST-M22-SEED merchant",
+  "confidenceScore": 100,
+  "creditScore": 21,
+  "recommendedLoanAmount": 0,
+  "scoredAt": "2026-07-20T17:27:39.488935+00:00"
+}
+```
+Deliberately capped at these three summary fields — no `revenueSummary`, `trendData`, `creditScoreBreakdown`, or `fraudFlags`, unlike the full report a lender's own session can see. Confirmed live that the response contains nothing beyond this shape.
+
+**Errors**: `400` — missing/malformed `phone`. `401` — missing, invalid, or revoked API key. `404` — no `approval_status: "approved"` merchant matches that phone number (an unapproved/rejected/nonexistent merchant is indistinguishable from the caller's perspective — deliberate, matches milestone 12's non-disclosure-of-existence stance). `500` — Supabase error.
+
+**Every query is logged** to `api_access_log` (client id, queried phone, matched merchant id or `null`, response status) — found, not-found, and unauthorized attempts alike, since no rate-limiting exists yet. Live-verified: a successful query produced exactly one `response_status: 200` log row.
+
+---
+
 ## Not yet implemented
 
-Admin fraud queue (`api-contracts.md`'s Admin section) — see `plan.md` for which milestone owns it.
+Nothing currently tracked here — all `api-contracts.md` sections and milestones 1–22's additive endpoints are implemented as of this entry.
