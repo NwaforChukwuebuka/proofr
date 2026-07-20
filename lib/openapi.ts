@@ -154,9 +154,9 @@ export const openApiSpec = {
     "/api/auth/login": {
       post: {
         tags: ["Auth"],
-        summary: "Login (get bearer token)",
+        summary: "⭐ Login — get bearer token (START HERE)",
         description:
-          "Exchange demo email/password for a Bearer accessToken. Uses server-side Supabase anon config — graders do not need Supabase URL/keys. Then Authorize → BearerAuth with accessToken.",
+          "START HERE for grading. Body: demo email + password → copy accessToken → click Authorize (top of page) → BearerAuth → paste token. Then call merchant/lender routes.",
         requestBody: {
           required: true,
           content: {

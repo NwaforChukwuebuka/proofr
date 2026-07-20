@@ -8,7 +8,7 @@ import { openApiSpec } from "@/lib/openapi";
 export async function GET() {
   return NextResponse.json(openApiSpec, {
     headers: {
-      "Cache-Control": "public, max-age=60",
+      "Cache-Control": "no-store, max-age=0",
     },
   });
 }
