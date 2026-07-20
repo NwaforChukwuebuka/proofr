@@ -18,7 +18,9 @@ import { authenticateAsLender } from "@/lib/lender-auth";
  * serves the last-generated snapshot. `creditScore` (milestone 17) is the
  * repayment-likelihood signal — see credit-intelligence-engine.md —
  * distinct from `confidenceScore`'s fraud-only signal; both are surfaced
- * so a lender isn't shown just the narrower figure.
+ * so a lender isn't shown just the narrower figure. `recommendedLoanAmount`
+ * (milestone 19) is included the same way — null when unscored, otherwise
+ * the most recent report's figure — see lib/loanRecommendation.ts.
  *
  * Merchant lookup is two separate parameterized queries (ilike + eq)
  * merged in JS, not a single .or() filter string, so a query containing
@@ -62,13 +64,13 @@ export async function GET(request: Request) {
     const merchantIds = [...merchantsById.keys()];
     const latestScoresByMerchant = new Map<
       string,
-      { confidenceScore: number; creditScore: number | null }
+      { confidenceScore: number; creditScore: number | null; recommendedLoanAmount: number | null }
     >();
 
     if (merchantIds.length > 0) {
       const { data: reports, error: reportsError } = await supabase
         .from("reports")
-        .select("merchant_id, confidence_score, credit_score, generated_at")
+        .select("merchant_id, confidence_score, credit_score, recommended_loan_amount, generated_at")
         .in("merchant_id", merchantIds)
         .order("generated_at", { ascending: false });
       if (reportsError) throw reportsError;
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
           latestScoresByMerchant.set(r.merchant_id, {
             confidenceScore: r.confidence_score,
             creditScore: r.credit_score,
+            recommendedLoanAmount: r.recommended_loan_amount,
           });
         }
       }
@@ -89,6 +92,7 @@ export async function GET(request: Request) {
         businessName: m.business_name,
         confidenceScore: scores?.confidenceScore ?? null,
         creditScore: scores?.creditScore ?? null,
+        recommendedLoanAmount: scores?.recommendedLoanAmount ?? null,
       };
     });
 

@@ -95,3 +95,7 @@ Reframes the product per the PRD's revised Vision (see [PROOFR_MVP_PRD.md](PROOF
     `app/report/[id]/page.tsx`, `app/lender/page.tsx`, `app/lender/merchants/[id]/page.tsx` now render `creditScore`/`creditScoreBreakdown` as the headline figure (with the existing `confidenceScore` relabeled "Fraud confidence score" and kept as a secondary, narrower figure, not replaced).
     *Done when*: all three pages show the credit score and its component breakdown when available. Data path confirmed correct against real seeded API responses; full interactive click-through not possible in this environment (no browser-automation tool available — same limitation as milestone 11).
 
+19. `[x]` **(Both) Recommended loan amount**
+    `lib/loanRecommendation.ts` — translates `credit_score` + verified revenue into an actual naira figure (25% of average verified monthly revenue, scaled by credit score, over the existing 3-month no-interest term), with a documented rationale since no real expense data exists to measure true repayment capacity. Stored on `reports`, surfaced on the report page and lender pages, and pre-fills the lender's loan-amount input on approval.
+    *Done when*: a generated report includes a recommended amount with its rationale, the figure matches across the report/search/detail endpoints, and the lender merchant-detail page's loan input pre-fills with it. **Live-verified** against the real Supabase + Monnify sandbox project — see `handoff.md`.
+

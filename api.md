@@ -160,7 +160,9 @@ Public route — no session. Called directly by Monnify.
 
 **Server-side flow**: runs `computeRevenueSummary` (grossInflow/verifiedRevenue/trend, daily granularity), a fetch of open `fraud_flags` joined to their `transactions` (for `payer_account`/`amount`), and (milestone 17) a fetch of all the merchant's transactions' `payer_account` values, in parallel; computes `confidenceScore` via `computeConfidenceScore`, then `creditScore`/`creditScoreBreakdown` via `lib/creditScore.ts`'s `computeCreditScore` (inputs: the trend array, `merchants.created_at`, `merchants.business_started_at`, the transaction payer_accounts, and `confidenceScore` itself — see `credit-intelligence-engine.md`), then inserts one `reports` row: `revenue_summary: { grossInflow, verifiedRevenue }`, `trend_data` (the trend array), `confidence_score`, `credit_score`, `credit_score_breakdown`, `fraud_flags_snapshot` (raw open-flag rows plus their transaction's `payer_account`/`amount`, per milestone 9's note that plain-language labels are a display concern, not a snapshot concern).
 
-**Milestone 17 note**: `creditScore` (0-100) and its `creditScoreBreakdown` are a separate, broader repayment-likelihood signal, not a replacement for `confidenceScore`'s narrower fraud-only signal — both are stored and both are returned by `GET`, below. **Live-verified** against the local dev server hitting the live Supabase + Monnify sandbox project: a real seeded merchant with `personalAccountNumber`/`businessStartDate` produced a real `self_funding` fraud flag and a real, correctly-shaped `creditScore`/`creditScoreBreakdown` on generation. Full transcript in `handoff.md`'s milestone 17 entry. Not yet re-verified against the deployed Render URL — do that before the investor demo.
+**Milestone 17 note**: `creditScore` (0-100) and its `creditScoreBreakdown` are a separate, broader repayment-likelihood signal, not a replacement for `confidenceScore`'s narrower fraud-only signal — both are stored and both are returned by `GET`, below. **Live-verified** against the local dev server hitting the live Supabase + Monnify sandbox project: a real seeded merchant with `personalAccountNumber`/`businessStartDate` produced a real `self_funding` fraud flag and a real, correctly-shaped `creditScore`/`creditScoreBreakdown` on generation. Full transcript in `handoff.md`'s milestone 17 entry.
+
+**Milestone 19 note**: `recommendedLoanAmount` (numeric) and `loanRecommendationBreakdown` (component figures + a `rationale` string array) are computed alongside `creditScore` and stored on the same `reports` row — see `lib/loanRecommendation.ts` and `credit-intelligence-engine.md`. **Live-verified**: a seeded merchant with two backdated (20-day-apart), clean, distinct-payer transactions totaling ₦40,000 verified revenue produced `creditScore: 57`, `recommendedLoanAmount: 26000` (₦60,000 average monthly verified revenue × 25% × 57% score multiplier × 3 months, rounded to the nearest ₦1,000) — math confirmed correct against the pure function's formula. Not yet re-verified against the deployed Render URL for either milestone 17 or 19 — do that before the investor demo.
 
 **Confidence score grouping decision** (the seam milestone 8 flagged): `fraud-rules.md` words penalties per *distinct triggering group* (circular_transfer: per payer; identical_transfers: per payer+amount group), but `lib/fraud.ts` writes one flag row per rule per qualifying transaction. `lib/confidence.ts` dedupes open flags into groups before penalizing — `circular_transfer` grouped by `payer_account`, `identical_transfers` grouped by `payer_account + amount`, `self_funding` and `velocity_spike` each collapsed to a single flat deduction regardless of row count (per `fraud-rules.md`'s "single occurrence is enough" / merchant-wide-check wording). Score starts at 100, floors at 0. Only `status: "open"` flags count — `overridden` flags are excluded entirely from both the score and the snapshot.
 
@@ -194,11 +196,25 @@ Public route — no session. Called directly by Monnify.
     "customerBehavior": { "score": 17, "uniqueCustomers": 12, "repeatCustomerRate": 0.5, "payerAccountCoverage": 0.83 },
     "fraudConfidence": { "score": 6, "confidenceScore": 60 }
   },
+  "recommendedLoanAmount": 26000,
+  "loanRecommendationBreakdown": {
+    "averageMonthlyVerifiedRevenue": 60000,
+    "capacityRatio": 0.25,
+    "scoreMultiplier": 0.57,
+    "monthlyInstallmentCap": 8550,
+    "termMonths": 3,
+    "rationale": [
+      "Average verified monthly revenue: ~₦60,000",
+      "Capacity assumption: at most 25% of monthly revenue toward loan repayment",
+      "Credit score adjustment: 57% of full capacity (from a credit score of 57/100)",
+      "Term: 3 months, no interest modeled — matches the existing mock repayment schedule"
+    ]
+  },
   "fraudFlags": [ { "id": "...", "rule_type": "identical_transfers", "severity": "medium", "status": "open", "transaction_id": "...", "payer_account": "...", "amount": 1000, "created_at": "..." } ],
   "generatedAt": "2026-07-19T23:48:48.740099+00:00"
 }
 ```
-`profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is. `creditScore`/`creditScoreBreakdown` (milestone 17) shown above are illustrative example numbers, not a literal copy-paste of the live-verified run's real output — see `handoff.md`'s milestone 17 entry for the actual real numbers observed (`creditScore: 23`, driven by a brand-new merchant with only one transaction — a low score is the *correct* output for that thin a history, not a bug).
+`profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is. `creditScore`/`creditScoreBreakdown` (milestone 17) shown above are illustrative example numbers, not a literal copy-paste of any one live-verified run's output — see `handoff.md`'s milestone 17 entry for the actual real numbers from that run (`creditScore: 23`, driven by a brand-new merchant with only one transaction — a low score is the *correct* output for that thin a history, not a bug). `recommendedLoanAmount`/`loanRecommendationBreakdown` (milestone 19) shown above **are** copy-pasted from a real live-verified run (see `handoff.md`'s milestone 19 entry) — the numbers are internally consistent and check out against the formula.
 
 **Milestone 11 addition**: `reportId` (the report's own row id) was added to this response — it was missing from the original milestone 10 shape, and without it the frontend's "my latest report" bearer-token fetch had no way to construct a `?reportId=` share link. Both the latest-report query and the specific-`reportId` query already selected `id`, so this was a one-line addition to `buildReportResponse`, not a new query. See `handoff.md`'s milestone 11 entry.
 
@@ -218,10 +234,10 @@ Public route — no session. Called directly by Monnify.
 **Response `200`**
 ```json
 [
-  { "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "businessName": "TEST-M12-SEED merchant", "confidenceScore": 100, "creditScore": 82 }
+  { "merchantId": "c8f4b842-cf81-4173-a94a-c27f38949bdf", "businessName": "TEST-M12-SEED merchant", "confidenceScore": 100, "creditScore": 82, "recommendedLoanAmount": 26000 }
 ]
 ```
-`confidenceScore`/`creditScore` are both `null` for a merchant with no `reports` row yet (deliberate — not omitted, not defaulted; see `handoff.md`'s milestone 12 entry for the original `confidenceScore` reasoning, extended identically to `creditScore` in milestone 17). For a merchant with one or more reports, both come from that merchant's most recently generated report.
+`confidenceScore`/`creditScore`/`recommendedLoanAmount` are all `null` for a merchant with no `reports` row yet (deliberate — not omitted, not defaulted; see `handoff.md`'s milestone 12 entry for the original `confidenceScore` reasoning, extended identically to `creditScore` in milestone 17 and `recommendedLoanAmount` in milestone 19). For a merchant with one or more reports, all three come from that merchant's most recently generated report. Live-verified in milestone 19's pass: search-result `recommendedLoanAmount` matched the source report's own value exactly.
 
 **Errors**: `401` — missing/invalid bearer token. `400` — missing `query`. `403` — valid token, but no `lenders` row for that user.
 

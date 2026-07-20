@@ -1,6 +1,6 @@
 # PROOFR — Data Model (Supabase / Postgres)
 
-Supports [plan.md](plan.md) milestones 1–17. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
+Supports [plan.md](plan.md) milestones 1–19. All tables use `uuid` primary keys (`gen_random_uuid()`) and `created_at timestamptz default now()` unless noted.
 
 ## `merchants`
 
@@ -58,6 +58,8 @@ Snapshot record, not live-computed on every view (regenerated on demand, milesto
 | `confidence_score` | numeric | Penalized by open fraud flags — see [fraud-rules.md](fraud-rules.md) |
 | `credit_score` | numeric, nullable | Milestone 17. Repayment-likelihood signal — see [credit-intelligence-engine.md](credit-intelligence-engine.md). Distinct from and not derived by replacing `confidence_score` |
 | `credit_score_breakdown` | jsonb, nullable | Milestone 17. Named component contributions to `credit_score` |
+| `recommended_loan_amount` | numeric, nullable | Milestone 19. Naira figure derived from verified revenue + `credit_score` — see [credit-intelligence-engine.md](credit-intelligence-engine.md). Additive alongside the two scores above, not a replacement |
+| `loan_recommendation_breakdown` | jsonb, nullable | Milestone 19. Component figures + plain-language rationale for `recommended_loan_amount` |
 | `fraud_flags_snapshot` | jsonb | Flags at time of generation |
 | `generated_at` | timestamptz | |
 

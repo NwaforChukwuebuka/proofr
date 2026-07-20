@@ -14,6 +14,7 @@ import {
   type FlagStatus,
 } from "@/lib/fraud-labels";
 import type { CreditScoreBreakdown } from "@/lib/creditScore";
+import type { LoanRecommendationResult } from "@/lib/loanRecommendation";
 
 interface MerchantRow {
   id: string;
@@ -35,6 +36,8 @@ interface Report {
   confidenceScore: number;
   creditScore: number | null;
   creditScoreBreakdown: CreditScoreBreakdown | null;
+  recommendedLoanAmount: number | null;
+  loanRecommendationBreakdown: (LoanRecommendationResult["breakdown"] & { rationale: string[] }) | null;
   fraudFlags: ReportFlag[];
   generatedAt: string;
 }
@@ -116,7 +119,11 @@ export default function LenderMerchantPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        setReport((await res.json()) as Report);
+        const loadedReport = (await res.json()) as Report;
+        setReport(loadedReport);
+        if (loadedReport.recommendedLoanAmount) {
+          setAmount(String(loadedReport.recommendedLoanAmount));
+        }
       } else {
         setReport(null);
       }
@@ -308,6 +315,30 @@ export default function LenderMerchantPage() {
                 </div>
               )}
 
+              {report.recommendedLoanAmount !== null && report.loanRecommendationBreakdown ? (
+                <div className="rounded-3xl bg-white p-6 shadow-2xl">
+                  <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
+                  <p className="mt-1 text-3xl font-extrabold text-zinc-900">
+                    {formatNaira(report.recommendedLoanAmount)}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Over {report.loanRecommendationBreakdown.termMonths} months, no interest modeled — pre-filled below
+                  </p>
+                  <ul className="mt-3 space-y-1">
+                    {report.loanRecommendationBreakdown.rationale.map((line) => (
+                      <li key={line} className="text-[11px] text-zinc-400">
+                        · {line}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
+                  <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
+                  <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
+                </div>
+              )}
+
               <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
                 <p className="text-xs font-medium text-zinc-400">
                   Fraud confidence score
@@ -387,6 +418,16 @@ export default function LenderMerchantPage() {
                     onChange={(e) => setAmount(e.target.value)}
                     className="mt-1 w-full rounded-xl border-2 border-brand-tint bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand"
                   />
+                  {report?.recommendedLoanAmount != null &&
+                    amount !== String(report.recommendedLoanAmount) && (
+                      <button
+                        type="button"
+                        onClick={() => setAmount(String(report.recommendedLoanAmount))}
+                        className="mt-1.5 text-xs font-semibold text-brand underline"
+                      >
+                        Use recommended amount ({formatNaira(report.recommendedLoanAmount)})
+                      </button>
+                    )}
                 </label>
                 {loanError && (
                   <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">

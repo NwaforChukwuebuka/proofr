@@ -15,6 +15,7 @@ import {
   type FlagStatus,
 } from "@/lib/fraud-labels";
 import type { CreditScoreBreakdown } from "@/lib/creditScore";
+import type { LoanRecommendationResult } from "@/lib/loanRecommendation";
 
 interface ReportFlag {
   id: string;
@@ -42,6 +43,8 @@ interface Report {
   confidenceScore: number;
   creditScore: number | null;
   creditScoreBreakdown: CreditScoreBreakdown | null;
+  recommendedLoanAmount: number | null;
+  loanRecommendationBreakdown: (LoanRecommendationResult["breakdown"] & { rationale: string[] }) | null;
   fraudFlags: ReportFlag[];
   generatedAt: string;
 }
@@ -323,6 +326,33 @@ export default function ReportPage() {
           ) : (
             <div className="rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200">
               <p className="text-xs font-medium text-zinc-400">Credit score</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Not available for this report — generate a fresh snapshot to compute it.
+              </p>
+            </div>
+          )}
+
+          {/* Recommended loan amount — the actionable figure for a lender */}
+          {report.recommendedLoanAmount !== null && report.loanRecommendationBreakdown ? (
+            <div className="rounded-3xl bg-white p-6 shadow-2xl print:shadow-none print:border print:border-zinc-200">
+              <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
+              <p className="mt-1 text-3xl font-extrabold text-zinc-900">
+                {formatNaira(report.recommendedLoanAmount)}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                Over {report.loanRecommendationBreakdown.termMonths} months, no interest modeled
+              </p>
+              <ul className="mt-3 space-y-1">
+                {report.loanRecommendationBreakdown.rationale.map((line) => (
+                  <li key={line} className="text-[11px] text-zinc-400">
+                    · {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-white p-6 text-center shadow-2xl print:shadow-none print:border print:border-zinc-200">
+              <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
               <p className="mt-2 text-sm text-zinc-500">
                 Not available for this report — generate a fresh snapshot to compute it.
               </p>

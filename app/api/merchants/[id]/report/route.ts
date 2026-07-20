@@ -6,6 +6,7 @@ import {
 import { computeRevenueSummary } from "@/lib/revenue";
 import { computeConfidenceScore, type FlagForScoring } from "@/lib/confidence";
 import { computeCreditScore } from "@/lib/creditScore";
+import { computeLoanRecommendation } from "@/lib/loanRecommendation";
 import type { RuleType } from "@/lib/fraud";
 import { buildReportResponse, getLatestReportForBearerToken } from "@/lib/reports";
 
@@ -73,11 +74,27 @@ async function fetchTransactionsForCreditScore(
 ) {
   const { data, error } = await supabase
     .from("transactions")
-    .select("payer_account")
+    .select("payer_account, created_at")
     .eq("merchant_id", merchantId);
 
   if (error) throw error;
-  return (data ?? []) as { payer_account: string | null }[];
+  return (data ?? []) as { payer_account: string | null; created_at: string }[];
+}
+
+/**
+ * Days spanned between the merchant's first and most recent transaction —
+ * the window lib/loanRecommendation.ts extrapolates an average monthly
+ * verified-revenue rate from. Zero if fewer than two transactions exist,
+ * which the recommendation function treats as "not enough data," not a
+ * fabricated extrapolation from a single data point.
+ */
+function daysOfTransactionHistory(
+  transactions: { created_at: string }[]
+): number {
+  if (transactions.length < 2) return 0;
+  const timestamps = transactions.map((t) => new Date(t.created_at).getTime());
+  const spanMs = Math.max(...timestamps) - Math.min(...timestamps);
+  return spanMs / (24 * 60 * 60 * 1000);
 }
 
 async function fetchOpenFlagsForMerchant(
@@ -128,6 +145,12 @@ export async function POST(
       confidenceScore,
     });
 
+    const loanRecommendation = computeLoanRecommendation({
+      verifiedRevenue: revenueSummary.verifiedRevenue,
+      daysOfHistory: daysOfTransactionHistory(creditScoreTransactions),
+      creditScore: creditScoreResult.score,
+    });
+
     const fraudFlagsSnapshot = openFlags.map((f) => ({
       id: f.id,
       transaction_id: f.transaction_id,
@@ -150,6 +173,11 @@ export async function POST(
         confidence_score: confidenceScore,
         credit_score: creditScoreResult.score,
         credit_score_breakdown: creditScoreResult.breakdown,
+        recommended_loan_amount: loanRecommendation.recommendedAmount,
+        loan_recommendation_breakdown: {
+          ...loanRecommendation.breakdown,
+          rationale: loanRecommendation.rationale,
+        },
         fraud_flags_snapshot: fraudFlagsSnapshot,
       })
       .select("id, generated_at")
@@ -191,7 +219,7 @@ export async function GET(
   const { data: report, error: reportError } = await supabase
     .from("reports")
     .select(
-      "id, merchant_id, revenue_summary, trend_data, confidence_score, credit_score, credit_score_breakdown, fraud_flags_snapshot, generated_at"
+      "id, merchant_id, revenue_summary, trend_data, confidence_score, credit_score, credit_score_breakdown, recommended_loan_amount, loan_recommendation_breakdown, fraud_flags_snapshot, generated_at"
     )
     .eq("id", reportId)
     .maybeSingle();

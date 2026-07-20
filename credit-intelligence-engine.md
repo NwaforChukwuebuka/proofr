@@ -62,17 +62,55 @@ access path and (where relevant) legal basis exist:
   accessible API for the kind of bulk/programmatic read this would need.
 - Device, location, or telecom-tenure data — no integration exists;
   telecom tenure specifically has no self-serve access path today.
-- Recommended loan amount / risk-based repayment terms — a genuinely
-  different, harder problem (translating a score into a specific naira
-  figure and terms) than producing the score itself. Tracked as a
-  separate, later roadmap item, not bundled into this milestone.
+- Risk-based repayment *terms* (variable interest, variable term
+  length) — milestone 19 (below) added a recommended *amount*, but
+  deliberately kept the existing fixed 3-month, no-interest schedule
+  shape (`lib/repayment.ts`) rather than also varying terms. Two new
+  numbers to explain in one milestone was judged worse than one.
+
+## Recommended loan amount (milestone 19)
+
+Answers a second, narrower question than the credit score alone: not
+just "how likely is this merchant to repay," but "how much could they
+plausibly repay." Implemented in `lib/loanRecommendation.ts`,
+`computeLoanRecommendation`.
+
+**The real gap this doesn't solve**: repayment capacity depends on
+disposable income (revenue minus expenses), and PROOFR captures no
+merchant expense data anywhere. Rather than fabricate an expense
+estimate, this uses a stated, named assumption instead — repayment
+capacity is capped at **25% of average verified monthly revenue**
+(`CAPACITY_RATIO` in `lib/loanRecommendation.ts`), a standard
+conservative benchmark in informal-sector underwriting when real
+expense data isn't available. This is a documented heuristic, not a
+measured number, and every report says so explicitly in its
+`rationale` lines — a lender sees the assumption, not just the output.
+
+**Formula**: `averageMonthlyVerifiedRevenue` (lifetime verified
+revenue ÷ days spanned by the merchant's transaction history × 30,
+zero if fewer than two transactions exist — no extrapolation from a
+single data point) × 25% × (`credit_score`/100) = monthly installment
+cap, × the existing 3-month term = `recommended_loan_amount`, rounded
+to the nearest ₦1,000.
+
+**Why credit_score scales it, not just gates it**: a merchant with the
+same revenue but a weaker score (thin history, inconsistent income,
+open fraud flags) gets a proportionally smaller recommendation, not
+an identical one — makes the score's earlier work in this doc actually
+change the lending outcome, not just sit next to it as a badge.
+
+**Live-verified**, not just unit-tested — see `handoff.md`'s milestone
+19 entry for the real numbers observed.
 
 ## Output shape
 
 Stored on the `reports` row (see [data-model.md](data-model.md)) as
 `credit_score` (0-100) and `credit_score_breakdown` (jsonb — the named
 component contributions, so a lender or a later debugging pass can see
-why the number is what it is, not just the number itself).
+why the number is what it is, not just the number itself). Milestone
+19 adds `recommended_loan_amount` (numeric) and
+`loan_recommendation_breakdown` (jsonb, including a `rationale` array
+of plain-language lines) alongside these, additively.
 
 ## Non-goals of this document
 

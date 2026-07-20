@@ -29,6 +29,8 @@ interface ReportRow {
   confidence_score: number;
   credit_score: number | null;
   credit_score_breakdown: unknown;
+  recommended_loan_amount: number | null;
+  loan_recommendation_breakdown: unknown;
   fraud_flags_snapshot: unknown;
   generated_at: string;
 }
@@ -79,7 +81,7 @@ export async function getLatestReportForBearerToken(
   const { data: latestReport, error: reportError } = await supabase
     .from("reports")
     .select(
-      "id, revenue_summary, trend_data, confidence_score, credit_score, credit_score_breakdown, fraud_flags_snapshot, generated_at"
+      "id, revenue_summary, trend_data, confidence_score, credit_score, credit_score_breakdown, recommended_loan_amount, loan_recommendation_breakdown, fraud_flags_snapshot, generated_at"
     )
     .eq("merchant_id", merchantId)
     .order("generated_at", { ascending: false })
@@ -120,6 +122,8 @@ export function buildReportResponse(
     confidenceScore: report.confidence_score,
     creditScore: report.credit_score,
     creditScoreBreakdown: report.credit_score_breakdown,
+    recommendedLoanAmount: report.recommended_loan_amount,
+    loanRecommendationBreakdown: report.loan_recommendation_breakdown,
     fraudFlags: report.fraud_flags_snapshot,
     generatedAt: report.generated_at,
   });

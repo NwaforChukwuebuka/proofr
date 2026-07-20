@@ -16,6 +16,7 @@ interface SearchResult {
   businessName: string;
   confidenceScore: number | null;
   creditScore: number | null;
+  recommendedLoanAmount: number | null;
 }
 
 function scoreBadge(score: number | null) {
