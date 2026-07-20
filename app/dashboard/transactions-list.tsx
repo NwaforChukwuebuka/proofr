@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { formatDate, formatNaira } from "@/lib/fraud-labels";
 
 export interface Transaction {
@@ -10,6 +11,8 @@ export interface Transaction {
   created_at: string;
 }
 
+const PREVIEW_COUNT = 5;
+
 export function TransactionsCard({
   transactions,
   flaggedTransactionIds,
@@ -17,27 +20,30 @@ export function TransactionsCard({
   transactions: Transaction[];
   flaggedTransactionIds: Set<string>;
 }) {
+  const preview = transactions.slice(0, PREVIEW_COUNT);
+
   return (
     <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
           Recent transactions
         </p>
-        {transactions.length > 0 && (
-          <span className="text-xs text-zinc-400">
-            Last {transactions.length}
-          </span>
-        )}
+        <Link
+          href="/dashboard/transactions"
+          className="cursor-pointer text-xs font-semibold text-brand underline decoration-brand/35 underline-offset-4 transition hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          View all
+        </Link>
       </div>
 
-      {transactions.length === 0 ? (
+      {preview.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-400">
           No payments yet — they&apos;ll show up here as customers pay into
           your dedicated account.
         </p>
       ) : (
         <div className="mt-3 divide-y divide-zinc-100">
-          {transactions.map((tx) => {
+          {preview.map((tx) => {
             const flagged = flaggedTransactionIds.has(tx.id);
             return (
               <div
