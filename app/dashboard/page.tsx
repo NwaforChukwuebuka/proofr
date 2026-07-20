@@ -196,6 +196,27 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchant?.id]);
 
+  const [generatingReport, setGeneratingReport] = useState(false);
+
+  async function generateReport() {
+    if (!merchant || !session) return;
+    setGeneratingReport(true);
+    try {
+      const res = await fetch(`/api/merchants/${merchant.id}/report`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) {
+        setError("Couldn't generate a report.");
+        return;
+      }
+      const { reportId } = (await res.json()) as { reportId: string };
+      router.push(`/report/${merchant.id}?reportId=${reportId}`);
+    } finally {
+      setGeneratingReport(false);
+    }
+  }
+
   async function signOut() {
     const supabase = getBrowserSupabaseClient();
     await supabase.auth.signOut();
@@ -354,6 +375,31 @@ export default function DashboardPage() {
             </div>
 
             <FraudFlagsCard flags={flags} />
+
+            {/* Proof-of-Revenue report entry point */}
+            <div className="rounded-3xl bg-white p-6 shadow-2xl">
+              <p className="text-xs font-medium text-zinc-400">
+                Proof-of-Revenue report
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Generate a shareable revenue report for a lender, showing your
+                confidence score, verified revenue, and any fraud flags.
+              </p>
+              <button
+                type="button"
+                onClick={generateReport}
+                disabled={generatingReport}
+                className="mt-4 w-full rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                {generatingReport ? "Generating…" : "Generate report"}
+              </button>
+              <Link
+                href={`/report/${merchant.id}`}
+                className="mt-2 block text-center text-xs font-semibold text-brand underline"
+              >
+                View my latest report
+              </Link>
+            </div>
           </div>
         )}
       </div>

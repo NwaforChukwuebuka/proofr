@@ -58,7 +58,7 @@ As-built API reference (actual request/response examples, auth headers, mocked p
     Assemble profile + verification status + revenue summary + trend data + confidence score + fraud flags into a report record.
     *Done when*: report generates in <5s per PRD acceptance criteria.
 
-11. `[ ]` **(Frontend) Report view/share**
+11. `[x]` **(Frontend) Report view/share**
     Merchant-facing report page + shareable link/download.
     *Done when*: a generated report renders correctly and is shareable.
 

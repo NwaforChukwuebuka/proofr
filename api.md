@@ -177,6 +177,7 @@ Public route — no session. Called directly by Monnify.
 **Response `200`**
 ```json
 {
+  "reportId": "713dfb5e-40c1-4880-9fcf-cfbc639eac43",
   "profile": { "businessName": "...", "approvalStatus": "approved", "hasVirtualAccount": true },
   "verificationStatus": { "bvnNinVerified": false },
   "revenueSummary": { "grossInflow": 77000, "verifiedRevenue": 55000 },
@@ -187,6 +188,8 @@ Public route — no session. Called directly by Monnify.
 }
 ```
 `profile`/`verificationStatus` are read live from the `merchants` row (not part of the stored snapshot — a merchant's business name/KYC status can change after a report was generated, and re-reading live is cheap and more accurate than baking it into the snapshot too). Everything else is the stored `reports` row as-is.
+
+**Milestone 11 addition**: `reportId` (the report's own row id) was added to this response — it was missing from the original milestone 10 shape, and without it the frontend's "my latest report" bearer-token fetch had no way to construct a `?reportId=` share link. Both the latest-report query and the specific-`reportId` query already selected `id`, so this was a one-line addition to `buildReportResponse`, not a new query. See `handoff.md`'s milestone 11 entry.
 
 **Errors**: `401`/`403`/`404` as above for the bearer-token path. `404` — no report has ever been generated for the merchant (latest-report path), or the given `reportId` doesn't exist / doesn't belong to this merchant id (share-link path).
 

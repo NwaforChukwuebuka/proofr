@@ -249,6 +249,7 @@ function buildReportResponse(
     monnify_account_number: string | null;
   },
   report: {
+    id: string;
     revenue_summary: { grossInflow: number; verifiedRevenue: number };
     trend_data: unknown;
     confidence_score: number;
@@ -257,6 +258,7 @@ function buildReportResponse(
   }
 ) {
   return NextResponse.json({
+    reportId: report.id,
     profile: {
       businessName: merchant.business_name,
       approvalStatus: merchant.approval_status,
