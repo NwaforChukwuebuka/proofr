@@ -17,18 +17,43 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = getBrowserSupabaseClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
 
-    if (signInError) {
-      setError(signInError.message);
+    if (signInError || !signInData.session) {
+      setError(signInError?.message ?? "Sign-in failed.");
       setSubmitting(false);
       return;
     }
 
-    router.push("/dashboard");
+    const userId = signInData.session.user.id;
+
+    const { data: merchantRow } = await supabase
+      .from("merchants")
+      .select("id")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (merchantRow) {
+      router.push("/dashboard");
+      return;
+    }
+
+    const { data: lenderRow } = await supabase
+      .from("lenders")
+      .select("id")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (lenderRow) {
+      router.push("/lender");
+      return;
+    }
+
+    setError("This account isn't set up as a merchant or lender yet.");
+    setSubmitting(false);
   }
 
   return (
@@ -43,10 +68,10 @@ export default function LoginPage() {
 
         <div className="mt-4 rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-            Merchant login
+            Sign in
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Sign in with the email and password from your signup.
+            Merchants and lenders sign in here with the same email/password.
           </p>
 
           <div className="mt-6 space-y-4">
