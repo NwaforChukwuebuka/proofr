@@ -14,5 +14,13 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ ok: true, merchants_count: count });
+  return NextResponse.json({
+    ok: true,
+    merchants_count: count,
+    // Render sets this automatically per deploy — lets us confirm exactly
+    // which commit is actually running instead of trusting the dashboard's
+    // "Deployed" label, which can lag or mislead when diagnosing a
+    // suspected stale-build issue (see handoff.md milestone 19 entry).
+    gitCommit: process.env.RENDER_GIT_COMMIT ?? null,
+  });
 }
