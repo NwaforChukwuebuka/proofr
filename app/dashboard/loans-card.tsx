@@ -1,6 +1,6 @@
 "use client";
 
-import { formatNaira } from "@/lib/fraud-labels";
+import { Naira } from "@/lib/fraud-labels";
 
 interface RepaymentPeriod {
   period: number;
@@ -41,7 +41,7 @@ function LoanRow({ loan }: { loan: Loan }) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-zinc-900">
-            {formatNaira(loan.amount)}
+            <Naira amount={loan.amount} />
             {loan.lenderOrgName ? ` from ${loan.lenderOrgName}` : ""}
           </p>
           {loan.interestRate !== null && loan.termMonths !== null && (
@@ -63,7 +63,7 @@ function LoanRow({ loan }: { loan: Loan }) {
             </span>
             {nextDue && (
               <span>
-                Next: {formatNaira(nextDue.amount - nextDue.paidAmount)} due{" "}
+                Next: <Naira amount={nextDue.amount - nextDue.paidAmount} /> due{" "}
                 {new Date(nextDue.dueDate).toLocaleDateString("en-NG", {
                   day: "numeric",
                   month: "short",

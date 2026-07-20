@@ -9,6 +9,7 @@ import { TrendChart } from "./trend-chart";
 import { FraudFlagsCard, type FraudFlag } from "./fraud-flags";
 import { TransactionsCard, type Transaction } from "./transactions-list";
 import { LoansCard, type Loan } from "./loans-card";
+import { Naira } from "@/lib/fraud-labels";
 
 interface Merchant {
   id: string;
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   const [copiedMerchantId, setCopiedMerchantId] = useState(false);
   const [publicApiConsent, setPublicApiConsent] = useState<{ consentGranted: boolean; consentedAt: string | null } | null>(null);
   const [savingConsent, setSavingConsent] = useState(false);
+  const [creditScore, setCreditScore] = useState<number | null>(null);
 
   const fetchRevenue = useCallback(
     async (merchantId: string, accessToken: string, gran: Granularity) => {
@@ -113,6 +115,19 @@ export default function DashboardPage() {
     setPublicApiConsent(await res.json());
   }, []);
 
+  const fetchCreditScore = useCallback(async (merchantId: string, accessToken: string) => {
+    const res = await fetch(`/api/merchants/${merchantId}/report`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (res.status === 404) {
+      setCreditScore(null);
+      return;
+    }
+    if (!res.ok) return;
+    const data = (await res.json()) as { creditScore: number | null };
+    setCreditScore(data.creditScore ?? null);
+  }, []);
+
   async function togglePublicApiConsent(nextConsent: boolean) {
     if (!merchant || !session) return;
     setSavingConsent(true);
@@ -177,6 +192,7 @@ export default function DashboardPage() {
           fetchConsent((merchantRow as Merchant).id, currentSession.access_token),
           fetchTransactions((merchantRow as Merchant).id),
           fetchLoans((merchantRow as Merchant).id, currentSession.access_token),
+          fetchCreditScore((merchantRow as Merchant).id, currentSession.access_token),
         ]);
       }
 
@@ -187,7 +203,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, fetchRevenue, fetchFlags, fetchConsent, fetchTransactions, fetchLoans]);
+  }, [router, fetchRevenue, fetchFlags, fetchConsent, fetchTransactions, fetchLoans, fetchCreditScore]);
 
   // Granularity toggle re-fetch.
   useEffect(() => {
@@ -394,17 +410,46 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-zinc-950 lg:text-5xl">
-                  {revenue ? formatNaira(revenue.verifiedRevenue) : "—"}
+                  {revenue ? <Naira amount={revenue.verifiedRevenue} /> : "—"}
                 </p>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Gross inflow: {revenue ? formatNaira(revenue.grossInflow) : "—"}
-                </p>
-                {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
-                  <p className="mt-1 text-sm font-medium text-red-600">
-                    {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)} excluded
-                    due to flagged activity
-                  </p>
-                )}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
+                      <>
+                        <p className="text-sm text-zinc-500">
+                          Gross inflow: {formatNaira(revenue.grossInflow)}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-red-600">
+                          {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)} excluded
+                          due to flagged activity
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      Credit score
+                    </p>
+                    <span
+                      aria-label={
+                        creditScore === null
+                          ? "Credit score unavailable"
+                          : creditScore >= 70
+                            ? "Good credit score"
+                            : "Weak credit score"
+                      }
+                      className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm ${
+                        creditScore === null
+                          ? "bg-zinc-300"
+                          : creditScore >= 70
+                            ? "bg-emerald-500"
+                            : "bg-red-500"
+                      }`}
+                    >
+                      {creditScore !== null ? creditScore : "—"}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="mt-5 flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">

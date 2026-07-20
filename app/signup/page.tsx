@@ -110,20 +110,31 @@ export default function SignupPage() {
     }
   }
 
+  const stepText = getStepText(step);
+
   return (
-    <div className="flex flex-1 flex-col items-center bg-brand px-4 py-10 sm:px-6">
+    <main className="flex flex-1 items-center justify-center bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-4 py-10 sm:px-6">
       <div className="w-full max-w-md">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-blue-100 hover:text-white"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-md text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
-          &larr; PROOFR
+          <span aria-hidden>&larr;</span>
+          <span className="inline-flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-extrabold text-white">
+              P
+            </span>
+            <span className="font-display tracking-tight text-zinc-900">
+              PROOFR
+            </span>
+          </span>
         </Link>
 
-        <div className="mt-4 rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-            {step === "pending" ? "You're all set" : "Merchant signup"}
+        <section className="mt-4 border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-8">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-zinc-900">
+            {stepText.title}
           </h1>
+          <p className="mt-1 text-sm text-zinc-500">{stepText.description}</p>
 
           {step !== "pending" && <StepIndicator step={step} />}
 
@@ -216,7 +227,7 @@ export default function SignupPage() {
 
           {step === "review" && (
             <div className="mt-6 space-y-4">
-              <dl className="space-y-2 rounded-2xl bg-brand-tint p-4 text-sm">
+              <dl className="divide-y divide-zinc-300 border bg-zinc-50 p-4 text-sm">
                 <ReviewRow label="Phone" value={form.phone} />
                 <ReviewRow label="Email" value={form.email} />
                 <ReviewRow label="Business name" value={form.businessName} />
@@ -227,7 +238,7 @@ export default function SignupPage() {
               </dl>
 
               {submitError && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {submitError}
                 </p>
               )}
@@ -248,10 +259,20 @@ export default function SignupPage() {
 
           {step === "pending" && result && (
             <div className="mt-6 space-y-4 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-tint text-2xl text-brand">
-                &#9203;
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand/20 bg-brand-tint text-brand">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="h-7 w-7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
               </div>
-              <h2 className="text-lg font-bold text-zinc-900">
+              <h2 className="font-display text-lg font-bold text-zinc-900">
                 Application pending approval
               </h2>
               <p className="text-sm text-zinc-500">
@@ -269,15 +290,15 @@ export default function SignupPage() {
               </p>
               <Link
                 href="/login"
-                className="inline-block text-sm font-semibold text-brand"
+                className="inline-block cursor-pointer text-sm font-semibold text-brand underline decoration-brand/30 underline-offset-4 transition hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 Go to login &rarr;
               </Link>
             </div>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -291,16 +312,23 @@ function StepIndicator({ step }: { step: Step }) {
   const currentIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="mt-4 flex items-center gap-2">
+    <div className="mt-5">
+      <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        {steps.map((s) => (
+          <span key={`label-${s.key}`}>{s.label}</span>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
       {steps.map((s, i) => (
         <div key={s.key} className="flex flex-1 items-center gap-2">
           <div
-            className={`h-1.5 flex-1 rounded-full ${
-              i <= currentIndex ? "bg-brand" : "bg-brand-tint"
+            className={`h-1.5 flex-1 rounded-full transition ${
+              i <= currentIndex ? "bg-brand" : "bg-zinc-200"
             }`}
           />
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -319,7 +347,8 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-full bg-brand px-4 py-3 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
+      aria-busy={disabled}
+      className="w-full rounded-full bg-brand px-4 py-3 text-sm font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
     >
       {children}
     </button>
@@ -340,7 +369,7 @@ function SecondaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-full border-2 border-brand-tint px-4 py-3 text-sm font-bold text-brand transition hover:bg-brand-tint disabled:opacity-50"
+      className="w-full rounded-full border border-zinc-300 px-4 py-3 text-sm font-bold text-zinc-700 transition duration-200 hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
     >
       {children}
     </button>
@@ -372,8 +401,9 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`mt-1 w-full rounded-xl border-2 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand ${
-          error ? "border-red-400" : "border-brand-tint"
+        aria-invalid={Boolean(error)}
+        className={`mt-1 min-h-11 w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+          error ? "border-red-400" : "border-zinc-300"
         }`}
       />
       {hint && !error && (
@@ -388,11 +418,46 @@ function Field({
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4">
+    <div className="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
       <dt className="text-zinc-500">{label}</dt>
       <dd className="truncate text-right font-semibold text-zinc-900">
         {value}
       </dd>
     </div>
   );
+}
+
+function getStepText(step: Step): { title: string; description: string } {
+  if (step === "account") {
+    return {
+      title: "Create your account",
+      description: "Start with your contact details to begin merchant onboarding.",
+    };
+  }
+
+  if (step === "verification") {
+    return {
+      title: "Verify identity",
+      description: "Add BVN or NIN now to speed up approval, or continue without it.",
+    };
+  }
+
+  if (step === "business") {
+    return {
+      title: "Business details",
+      description: "Tell us the business name that will receive customer payments.",
+    };
+  }
+
+  if (step === "review") {
+    return {
+      title: "Review details",
+      description: "Confirm your information before submitting the application.",
+    };
+  }
+
+  return {
+    title: "You are all set",
+    description: "Your account is created and pending review by the PROOFR team.",
+  };
 }

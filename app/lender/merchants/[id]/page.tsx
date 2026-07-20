@@ -239,17 +239,20 @@ export default function LenderMerchantPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-brand">
-        <p className="text-sm font-medium text-blue-100">Loading merchant…</p>
+      <div className="flex flex-1 items-center justify-center bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-6">
+        <p className="text-sm font-medium text-zinc-500">Loading merchant…</p>
       </div>
     );
   }
 
   if (!merchant) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-brand px-6 text-center">
-        <p className="text-sm font-medium text-blue-100">Merchant not found.</p>
-        <Link href="/lender" className="text-sm font-semibold text-white underline">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-6 text-center">
+        <p className="text-sm font-medium text-zinc-600">Merchant not found.</p>
+        <Link
+          href="/lender"
+          className="cursor-pointer text-sm font-semibold text-brand underline decoration-brand/35 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
           Back to search
         </Link>
       </div>
@@ -262,153 +265,176 @@ export default function LenderMerchantPage() {
     : 0;
 
   return (
-    <div className="flex flex-1 flex-col items-center bg-brand px-4 py-10 sm:px-6">
-      <div className="w-full max-w-md">
+    <main className="flex flex-1 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto w-full max-w-7xl">
         <div className="flex items-center justify-between">
-          <Link href="/lender" className="text-sm font-medium text-blue-100 hover:text-white">
+          <Link
+            href="/lender"
+            className="cursor-pointer text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
             &larr; Search
           </Link>
         </div>
 
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
+        <h1 className="font-display mt-4 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
           {merchant.business_name}
         </h1>
 
-        <div className="mt-4 space-y-4">
-          {!reportChecked ? (
-            <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
-              <p className="text-sm text-zinc-500">Loading report…</p>
-            </div>
-          ) : !report ? (
-            <div className="rounded-3xl bg-white p-6 shadow-2xl">
-              <p className="text-xs font-medium text-zinc-400">Credit score</p>
-              <p className="mt-2 text-sm text-zinc-500">
-                This merchant hasn&apos;t generated a Proof-of-Revenue report yet
-                — no score or revenue summary is available.
-              </p>
-            </div>
-          ) : (
-            <>
-              {report.creditScore !== null && report.creditScoreBreakdown ? (
-                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
-                  <p className="text-xs font-medium text-zinc-400">Credit score</p>
-                  <p className={`mt-2 text-6xl font-extrabold ${confidenceTone(report.creditScore).ring}`}>
-                    {report.creditScore}
+        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(22rem,1fr)] lg:items-start lg:gap-6">
+          <div className="space-y-5">
+            {!reportChecked ? (
+              <section className="border-l-2 border-zinc-200 bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-sm text-zinc-500">Loading report…</p>
+              </section>
+            ) : !report ? (
+              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Credit score
+                </p>
+                <p className="mt-2 text-sm text-zinc-500">
+                  This merchant hasn&apos;t generated a Proof-of-Revenue report yet —
+                  no score or revenue summary is available.
+                </p>
+              </section>
+            ) : (
+              <>
+                {report.creditScore !== null && report.creditScoreBreakdown ? (
+                  <section className="border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Credit score
+                    </p>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <p className={`font-mono text-6xl font-bold leading-none ${confidenceTone(report.creditScore).ring}`}>
+                        {report.creditScore}
+                      </p>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          confidenceTone(report.creditScore).bg
+                        } ${confidenceTone(report.creditScore).ring}`}
+                      >
+                        {confidenceTone(report.creditScore).label}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Repayment-likelihood signal — how likely this merchant is to repay a loan, not just how much revenue they report.
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      {creditScoreComponents(report.creditScoreBreakdown).map((c) => (
+                        <div key={c.label} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-zinc-700">{c.label}</p>
+                            <p className="truncate text-[11px] text-zinc-500">{c.detail}</p>
+                          </div>
+                          <p className="shrink-0 text-xs font-semibold text-zinc-500">
+                            {Math.round(c.score * 10) / 10}/{c.max}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <section className="border-l-2 border-zinc-200 bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Credit score
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
+                  </section>
+                )}
+
+                <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Verified revenue
+                  </p>
+                  <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-zinc-900">
+                    {formatNaira(report.revenueSummary.verifiedRevenue)}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Gross inflow: {formatNaira(report.revenueSummary.grossInflow)}
+                  </p>
+                  {excluded > 0 && (
+                    <p className="mt-1 text-sm font-medium text-red-600">
+                      {formatNaira(excluded)} excluded due to flagged activity
+                    </p>
+                  )}
+
+                  {report.fraudFlags.length > 0 && (
+                    <div className="mt-4 space-y-1.5">
+                      {report.fraudFlags.map((flag) => (
+                        <div
+                          key={flag.id}
+                          className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50/70 px-3 py-2"
+                        >
+                          <span className="text-xs font-semibold text-zinc-700">
+                            {RULE_LABELS[flag.rule_type]}
+                          </span>
+                          <SeverityBadge severity={flag.severity} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Link
+                    href={`/report/${merchantId}?reportId=${report.reportId}`}
+                    className="mt-4 block min-h-11 cursor-pointer rounded-full bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  >
+                    View / download full report
+                  </Link>
+                </section>
+              </>
+            )}
+          </div>
+
+          <aside className="space-y-5 lg:sticky lg:top-6">
+            {report && (
+              <>
+                {report.recommendedLoanAmount !== null && report.loanRecommendationBreakdown ? (
+                  <section className="border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Recommended loan amount
+                    </p>
+                    <p className="mt-1 font-mono text-3xl font-bold text-zinc-900">
+                      {formatNaira(report.recommendedLoanAmount)}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Over {report.loanRecommendationBreakdown.termMonths} months, no interest modeled — pre-filled below
+                    </p>
+                    <ul className="mt-3 space-y-1">
+                      {report.loanRecommendationBreakdown.rationale.map((line) => (
+                        <li key={line} className="text-[11px] text-zinc-500">
+                          · {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : (
+                  <section className="border-l-2 border-zinc-200 bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Recommended loan amount
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
+                  </section>
+                )}
+
+                <section className="border-l-2 border-zinc-200 bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Fraud confidence score
+                  </p>
+                  <p className={`mt-2 font-mono text-4xl font-bold ${tone!.ring}`}>
+                    {report.confidenceScore}
                   </p>
                   <span
-                    className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                      confidenceTone(report.creditScore).bg
-                    } ${confidenceTone(report.creditScore).ring}`}
+                    className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${tone!.bg} ${tone!.ring}`}
                   >
-                    {confidenceTone(report.creditScore).label}
+                    {tone!.label}
                   </span>
-                  <p className="mt-3 text-xs text-zinc-400">
-                    Repayment-likelihood signal — how likely this merchant is to repay a loan, not just how much revenue they report.
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Measures only whether this transaction history looks suspicious.
                   </p>
-                  <div className="mt-4 space-y-2 text-left">
-                    {creditScoreComponents(report.creditScoreBreakdown).map((c) => (
-                      <div key={c.label} className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-zinc-700">{c.label}</p>
-                          <p className="truncate text-[11px] text-zinc-400">{c.detail}</p>
-                        </div>
-                        <p className="shrink-0 text-xs font-semibold text-zinc-500">
-                          {Math.round(c.score * 10) / 10}/{c.max}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
-                  <p className="text-xs font-medium text-zinc-400">Credit score</p>
-                  <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
-                </div>
-              )}
+                </section>
+              </>
+            )}
 
-              {report.recommendedLoanAmount !== null && report.loanRecommendationBreakdown ? (
-                <div className="rounded-3xl bg-white p-6 shadow-2xl">
-                  <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
-                  <p className="mt-1 text-3xl font-extrabold text-zinc-900">
-                    {formatNaira(report.recommendedLoanAmount)}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Over {report.loanRecommendationBreakdown.termMonths} months, no interest modeled — pre-filled below
-                  </p>
-                  <ul className="mt-3 space-y-1">
-                    {report.loanRecommendationBreakdown.rationale.map((line) => (
-                      <li key={line} className="text-[11px] text-zinc-400">
-                        · {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
-                  <p className="text-xs font-medium text-zinc-400">Recommended loan amount</p>
-                  <p className="mt-2 text-sm text-zinc-500">Not available for this report.</p>
-                </div>
-              )}
-
-              <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
-                <p className="text-xs font-medium text-zinc-400">
-                  Fraud confidence score
-                </p>
-                <p className={`mt-2 text-4xl font-extrabold ${tone!.ring}`}>
-                  {report.confidenceScore}
-                </p>
-                <span
-                  className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${tone!.bg} ${tone!.ring}`}
-                >
-                  {tone!.label}
-                </span>
-                <p className="mt-3 text-xs text-zinc-400">
-                  Measures only whether this transaction history looks suspicious.
-                </p>
-              </div>
-
-              <div className="rounded-3xl bg-white p-6 shadow-2xl">
-                <p className="text-xs font-medium text-zinc-400">Verified revenue</p>
-                <p className="mt-1 text-3xl font-extrabold text-zinc-900">
-                  {formatNaira(report.revenueSummary.verifiedRevenue)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Gross inflow: {formatNaira(report.revenueSummary.grossInflow)}
-                </p>
-                {excluded > 0 && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {formatNaira(excluded)} excluded due to flagged activity
-                  </p>
-                )}
-
-                {report.fraudFlags.length > 0 && (
-                  <div className="mt-4 space-y-1.5">
-                    {report.fraudFlags.map((flag) => (
-                      <div
-                        key={flag.id}
-                        className="flex items-center justify-between rounded-xl bg-red-50/60 px-3 py-2"
-                      >
-                        <span className="text-xs font-semibold text-zinc-700">
-                          {RULE_LABELS[flag.rule_type]}
-                        </span>
-                        <SeverityBadge severity={flag.severity} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <Link
-                  href={`/report/${merchantId}?reportId=${report.reportId}`}
-                  className="mt-4 block rounded-full bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
-                >
-                  View / download full report
-                </Link>
-              </div>
-            </>
-          )}
-
-          {/* Loan approval */}
-          <div className="rounded-3xl bg-white p-6 shadow-2xl">
+            <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
             <p className="text-xs font-medium text-zinc-400">Mock loan</p>
             <p className="mt-1 text-sm text-zinc-500">
               Approve a loan for this merchant. This is a hackathon
@@ -427,7 +453,7 @@ export default function LenderMerchantPage() {
                     value={amount}
                     placeholder="e.g. 100000"
                     onChange={(e) => setAmount(e.target.value)}
-                    className="mt-1 w-full rounded-xl border-2 border-brand-tint bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand"
+                    className="mt-1 w-full rounded-xl border-2 border-brand-tint bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                   />
                   {report?.recommendedLoanAmount != null &&
                     amount !== String(report.recommendedLoanAmount) && (
@@ -449,7 +475,7 @@ export default function LenderMerchantPage() {
                   type="button"
                   onClick={approveLoan}
                   disabled={approving || !amount}
-                  className="mt-4 w-full rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+                  className="mt-4 min-h-11 w-full cursor-pointer rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
                 >
                   {approving ? "Approving…" : "Approve mock loan"}
                 </button>
@@ -480,7 +506,7 @@ export default function LenderMerchantPage() {
                   {schedule.map((p) => (
                     <div
                       key={p.period}
-                      className="flex items-center justify-between rounded-xl bg-brand-tint/60 px-3 py-2 text-sm"
+                      className="flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2 text-sm ring-1 ring-zinc-200"
                     >
                       <span className="font-medium text-zinc-600">
                         Period {p.period}
@@ -500,9 +526,10 @@ export default function LenderMerchantPage() {
                 </div>
               </div>
             )}
-          </div>
+            </section>
+          </aside>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

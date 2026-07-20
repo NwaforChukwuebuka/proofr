@@ -26,6 +26,21 @@ export function formatNaira(amount: number): string {
   return `₦${amount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 }
 
+/**
+ * The ₦ glyph is missing from Geist Sans/Mono, so the browser falls back to
+ * a different font for just that character. That fallback's advance width
+ * doesn't match, and the symbol overlaps or strikes through the digits that
+ * follow. Rendering the symbol in a plain system-font span sidesteps it.
+ */
+export function Naira({ amount, className = "" }: { amount: number; className?: string }) {
+  return (
+    <span className={`whitespace-nowrap ${className}`}>
+      <span style={{ fontFamily: "Segoe UI, Arial, sans-serif" }}>₦</span>
+      {amount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}
+    </span>
+  );
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-NG", {
     day: "numeric",

@@ -29,7 +29,72 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+}
+
+.hero-copy-in {
+  animation: heroCopyIn 500ms ease-out both;
+}
+
+.hero-copy-in-delay {
+  animation: heroCopyIn 650ms ease-out both;
+  animation-delay: 120ms;
+}
+
+.hero-copy-in-late {
+  animation: heroCopyIn 700ms ease-out both;
+  animation-delay: 220ms;
+}
+
+.ledger-row-in {
+  animation: ledgerRowIn 420ms ease-out both;
+}
+
+.ledger-row-delay-1 {
+  animation-delay: 120ms;
+}
+
+.ledger-row-delay-2 {
+  animation-delay: 220ms;
+}
+
+@keyframes heroCopyIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ledgerRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy-in,
+  .hero-copy-in-delay,
+  .hero-copy-in-late,
+  .ledger-row-in,
+  .ledger-row-delay-1,
+  .ledger-row-delay-2 {
+    animation: none;
+  }
 }
 
 @media print {

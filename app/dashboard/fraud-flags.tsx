@@ -29,7 +29,7 @@ export interface FraudFlag {
 
 function FlagRow({ flag }: { flag: FraudFlag }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-2xl bg-red-50/60 p-3">
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-red-100 bg-red-50/70 p-3">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-zinc-900">
           {RULE_LABELS[flag.rule_type]}
@@ -53,9 +53,11 @@ export function FraudFlagsCard({ flags }: { flags: FraudFlag[] }) {
   if (openFlags.length === 0 && clearedFlags.length === 0) return null;
 
   return (
-    <div className="rounded-3xl bg-white p-6 shadow-2xl">
+    <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-zinc-400">Fraud flags</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          Fraud flags
+        </p>
         {openFlags.length > 0 && (
           <span className="rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-700">
             {openFlags.length} open
@@ -74,14 +76,14 @@ export function FraudFlagsCard({ flags }: { flags: FraudFlag[] }) {
       )}
 
       {clearedFlags.length > 0 && (
-        <div className="mt-4 space-y-2 border-t border-zinc-100 pt-4 opacity-60">
+        <div className="mt-4 space-y-2 border-t border-zinc-100 pt-4">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
             Cleared
           </p>
           {clearedFlags.map((flag) => (
             <div
               key={flag.id}
-              className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 p-3"
+              className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 p-3"
             >
               <p className="min-w-0 truncate text-sm text-zinc-500">
                 {RULE_LABELS[flag.rule_type]} ·{" "}
@@ -94,6 +96,6 @@ export function FraudFlagsCard({ flags }: { flags: FraudFlag[] }) {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

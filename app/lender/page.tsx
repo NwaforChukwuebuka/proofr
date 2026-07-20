@@ -181,11 +181,7 @@ export default function LenderPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-600">Lender portal</p>
 
-        <div className="mt-6">
-          <LoanPortfolioCard loans={portfolioLoans} />
-        </div>
-
-        <section className="mt-5 border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+        <section className="mt-6 border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
             Search merchants
           </p>
@@ -267,6 +263,10 @@ export default function LenderPage() {
             </div>
           )}
         </section>
+
+        <div className="mt-5">
+          <LoanPortfolioCard loans={portfolioLoans} />
+        </div>
       </div>
     </main>
   );

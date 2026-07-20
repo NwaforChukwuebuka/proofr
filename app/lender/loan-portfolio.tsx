@@ -89,14 +89,23 @@ function PortfolioRow({ loan }: { loan: PortfolioLoan }) {
 
 export function LoanPortfolioCard({ loans }: { loans: PortfolioLoan[] }) {
   return (
-    <section className="border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-        Your loan portfolio
+    <section className="border-l-2 border-zinc-200 bg-white p-6 ring-1 ring-zinc-100">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          Active loans
+        </p>
+        {loans.length > 0 && (
+          <p className="font-mono text-xs font-semibold text-zinc-500">
+            {loans.length} {loans.length === 1 ? "loan" : "loans"}
+          </p>
+        )}
+      </div>
+      <p className="mt-1 text-sm text-zinc-500">
+        Monitor repayments on loans you&apos;ve already approved.
       </p>
       {loans.length === 0 ? (
-        <p className="mt-2 text-sm text-zinc-500">
-          You haven&apos;t approved any loans yet — search for a merchant below
-          to get started.
+        <p className="mt-3 text-sm text-zinc-500">
+          No loans yet — search for a merchant above to underwrite.
         </p>
       ) : (
         <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200">
