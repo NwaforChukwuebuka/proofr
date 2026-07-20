@@ -38,9 +38,9 @@ function LoanRow({ loan }: { loan: Loan }) {
 
   return (
     <div className="border-t border-zinc-100 pt-4 first:border-t-0 first:pt-0">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-zinc-900">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-semibold text-zinc-900">
             <Naira amount={loan.amount} />
             {loan.lenderOrgName ? ` from ${loan.lenderOrgName}` : ""}
           </p>
@@ -57,12 +57,12 @@ function LoanRow({ loan }: { loan: Loan }) {
 
       {schedule.length > 0 && (
         <div className="mt-3">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+          <div className="flex flex-col gap-1 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span>
               {paidCount} of {schedule.length} periods paid
             </span>
             {nextDue && (
-              <span>
+              <span className="break-words sm:text-right">
                 Next: <Naira amount={nextDue.amount - nextDue.paidAmount} /> due{" "}
                 {new Date(nextDue.dueDate).toLocaleDateString("en-NG", {
                   day: "numeric",
@@ -87,7 +87,7 @@ export function LoansCard({ loans }: { loans: Loan[] }) {
   if (loans.length === 0) return null;
 
   return (
-    <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+    <section className="min-w-0 border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
         Loans
       </p>

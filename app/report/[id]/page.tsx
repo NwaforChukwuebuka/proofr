@@ -102,10 +102,10 @@ function creditScoreComponents(breakdown: CreditScoreBreakdown) {
       }`,
     },
     {
-      label: "Fraud confidence",
+      label: "Revenue integrity",
       max: 10,
       score: breakdown.fraudConfidence.score,
-      detail: `From the ${breakdown.fraudConfidence.confidenceScore}/100 fraud confidence score below`,
+      detail: `From the ${breakdown.fraudConfidence.confidenceScore}/100 revenue integrity score below`,
     },
   ];
 }
@@ -439,7 +439,7 @@ export default function ReportPage() {
 
             <section className={`border-l-2 border-zinc-200 ${panelClass}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Fraud confidence score
+                Revenue integrity
               </p>
               <p className={`mt-2 font-mono text-4xl font-bold ${tone.ring}`}>
                 {report.confidenceScore}
@@ -450,7 +450,7 @@ export default function ReportPage() {
                 {tone.label}
               </span>
               <p className="mt-3 text-xs text-zinc-500">
-                Measures only whether this transaction history looks suspicious — see the credit score for the broader repayment signal.
+                How clean this payment history looks — 100 means no open fraud flags. See the credit score for the broader repayment signal.
               </p>
             </section>
 

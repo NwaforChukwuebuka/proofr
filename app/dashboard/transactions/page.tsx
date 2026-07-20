@@ -139,21 +139,21 @@ export default function AllTransactionsPage() {
   }
 
   return (
-    <main className="flex flex-1 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <div className="mx-auto w-full max-w-2xl">
+    <main className="flex min-w-0 flex-1 overflow-x-clip bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-3 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-2xl">
         <Link
           href="/dashboard"
-          className="cursor-pointer text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           &larr; Back to dashboard
         </Link>
 
-        <h1 className="font-display mt-4 text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 className="font-display mt-4 break-words text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">
           All transactions
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">{merchant.business_name}</p>
+        <p className="mt-1 break-words text-sm text-zinc-500">{merchant.business_name}</p>
 
-        <section className="mt-6 border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+        <section className="mt-5 min-w-0 border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:mt-6 sm:p-6">
           {transactions.length === 0 ? (
             <p className="text-sm text-zinc-400">
               No payments yet — they&apos;ll show up here as customers pay into
@@ -166,9 +166,9 @@ export default function AllTransactionsPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-zinc-900">
                         {tx.payer_name ?? "Unknown payer"}
                       </p>
@@ -176,7 +176,7 @@ export default function AllTransactionsPage() {
                         {formatDate(tx.created_at)}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex max-w-[45%] shrink-0 flex-col items-end gap-1 sm:max-w-none sm:flex-row sm:items-center sm:gap-2">
                       {flagged && (
                         <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                           Flagged

@@ -347,12 +347,12 @@ export default function DashboardPage() {
   );
 
   return (
-    <main className="flex flex-1 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <div className="mx-auto w-full max-w-7xl">
-        <header className="flex items-center justify-between gap-4">
+    <main className="flex min-w-0 flex-1 overflow-x-clip bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)] px-3 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-7xl">
+        <header className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-extrabold text-white">
               P
@@ -362,18 +362,18 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={signOut}
-            className="cursor-pointer rounded-md px-2 py-1 text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="min-h-11 cursor-pointer rounded-md px-2 py-1 text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             Sign out
           </button>
         </header>
 
-        <h1 className="font-display mt-6 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
+        <h1 className="font-display mt-5 break-words text-2xl font-extrabold tracking-tight text-zinc-900 sm:mt-6 sm:text-3xl lg:text-4xl">
           {merchant.business_name}
         </h1>
 
         {merchant.approval_status !== "approved" ? (
-          <section className="mt-5 max-w-xl border-l-2 border-brand bg-white p-6 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-8">
+          <section className="mt-5 max-w-xl border-l-2 border-brand bg-white p-4 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-8">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand/20 bg-brand-tint text-brand">
               <svg
                 viewBox="0 0 24 24"
@@ -396,10 +396,10 @@ export default function DashboardPage() {
             </p>
           </section>
         ) : (
-          <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(20rem,1fr)] lg:items-start lg:gap-6">
-            <div className="space-y-5">
-              <section className="border-l-2 border-brand bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 lg:p-7">
-                <div className="flex items-center justify-between">
+          <div className="mt-5 grid min-w-0 gap-4 sm:mt-6 sm:gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)] lg:items-start lg:gap-6">
+            <div className="min-w-0 space-y-4 sm:space-y-5 lg:order-1">
+              <section className="min-w-0 border-l-2 border-brand bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6 lg:p-7">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                     Verified revenue
                   </p>
@@ -409,24 +409,24 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-zinc-950 lg:text-5xl">
+                <p className="mt-1 font-mono text-[clamp(1.75rem,8vw,3rem)] font-bold tracking-tight text-zinc-950 lg:text-5xl">
                   {revenue ? <Naira amount={revenue.verifiedRevenue} /> : "—"}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     {revenue && revenue.grossInflow > revenue.verifiedRevenue && (
                       <>
-                        <p className="text-sm text-zinc-500">
+                        <p className="break-words text-sm text-zinc-500">
                           Gross inflow: {formatNaira(revenue.grossInflow)}
                         </p>
-                        <p className="mt-1 text-sm font-medium text-red-600">
+                        <p className="mt-1 break-words text-sm font-medium text-red-600">
                           {formatNaira(revenue.grossInflow - revenue.verifiedRevenue)} excluded
                           due to flagged activity
                         </p>
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex shrink-0 items-center gap-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                       Credit score
                     </p>
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between">
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
                     Trend
                   </p>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => setGranularity("daily")}
-                      className={`cursor-pointer rounded-full px-3 py-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                         granularity === "daily" ? "bg-brand text-white" : "text-brand"
                       }`}
                     >
@@ -468,7 +468,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => setGranularity("monthly")}
-                      className={`cursor-pointer rounded-full px-3 py-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      className={`min-h-9 cursor-pointer rounded-full px-3 py-1.5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                         granularity === "monthly" ? "bg-brand text-white" : "text-brand"
                       }`}
                     >
@@ -477,7 +477,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="mt-3">
+                <div className="mt-3 min-w-0">
                   <TrendChart trend={revenue?.trend ?? []} />
                 </div>
               </section>
@@ -492,19 +492,19 @@ export default function DashboardPage() {
               <FraudFlagsCard flags={flags} />
             </div>
 
-            <aside className="space-y-5 lg:sticky lg:top-6">
-              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+            <aside className="order-first min-w-0 space-y-4 sm:space-y-5 lg:order-2 lg:sticky lg:top-6">
+              <section className="border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Merchant ID
                 </p>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-mono text-sm font-semibold text-zinc-900">
+                <div className="mt-2 flex items-center gap-2 sm:gap-3">
+                  <p className="min-w-0 flex-1 truncate font-mono text-xs font-semibold text-zinc-900 sm:text-sm">
                     {merchant.id}
                   </p>
                   <button
                     type="button"
                     onClick={copyMerchantId}
-                    className="cursor-pointer shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    className="min-h-10 shrink-0 cursor-pointer rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:px-4"
                   >
                     {copiedMerchantId ? "Copied" : "Copy ID"}
                   </button>
@@ -519,14 +519,14 @@ export default function DashboardPage() {
                   Dedicated account
                 </p>
                 {merchant.monnify_account_number ? (
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <p className="font-mono text-2xl font-bold tracking-tight text-zinc-900">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <p className="min-w-0 flex-1 break-all font-mono text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl">
                       {merchant.monnify_account_number}
                     </p>
                     <button
                       type="button"
                       onClick={copyAccountNumber}
-                      className="cursor-pointer shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                      className="min-h-10 shrink-0 cursor-pointer rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:px-4"
                     >
                       {copied ? "Copied" : "Copy"}
                     </button>
@@ -541,7 +541,7 @@ export default function DashboardPage() {
                 </p>
               </section>
 
-              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+              <section className="border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Proof-of-Revenue report
                 </p>
@@ -559,13 +559,13 @@ export default function DashboardPage() {
                 </button>
                 <Link
                   href={`/report/${merchant.id}`}
-                  className="mt-3 block text-center text-xs font-semibold text-brand underline decoration-brand/35 underline-offset-4 transition hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  className="mt-3 block min-h-10 py-2 text-center text-xs font-semibold text-brand underline decoration-brand/35 underline-offset-4 transition hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
                   View my latest report
                 </Link>
               </section>
 
-              <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
+              <section className="border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Third-party credit lookups
                 </p>
@@ -575,7 +575,7 @@ export default function DashboardPage() {
                   number, never your revenue details or transaction history. Off by
                   default; you can turn this off again at any time.
                 </p>
-                <div className="mt-4 flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3 ring-1 ring-zinc-200">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-zinc-50 px-3 py-3 ring-1 ring-zinc-200 sm:px-4">
                   <span className="text-sm font-semibold text-zinc-700">
                     {publicApiConsent?.consentGranted ? "Enabled" : "Disabled"}
                   </span>
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                     onClick={() =>
                       togglePublicApiConsent(!publicApiConsent?.consentGranted)
                     }
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60 ${
+                    className={`min-h-10 rounded-full px-4 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60 ${
                       publicApiConsent?.consentGranted
                         ? "bg-white text-red-600 ring-1 ring-zinc-200 hover:bg-red-50"
                         : "bg-brand text-white hover:bg-brand-dark"

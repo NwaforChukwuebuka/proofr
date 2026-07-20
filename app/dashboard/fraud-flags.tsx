@@ -30,18 +30,20 @@ export interface FraudFlag {
 function FlagRow({ flag }: { flag: FraudFlag }) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-xl border border-red-100 bg-red-50/70 p-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-zinc-900">
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-sm font-semibold text-zinc-900">
           {RULE_LABELS[flag.rule_type]}
         </p>
-        <p className="mt-0.5 truncate text-xs text-zinc-500">
+        <p className="mt-0.5 break-words text-xs text-zinc-500">
           {formatNaira(flag.transactions.amount)}
           {flag.transactions.payer_name ? ` · ${flag.transactions.payer_name}` : ""}
           {" · "}
           {formatDate(flag.transactions.created_at)}
         </p>
       </div>
-      <SeverityBadge severity={flag.severity} />
+      <div className="shrink-0">
+        <SeverityBadge severity={flag.severity} />
+      </div>
     </div>
   );
 }
@@ -53,13 +55,13 @@ export function FraudFlagsCard({ flags }: { flags: FraudFlag[] }) {
   if (openFlags.length === 0 && clearedFlags.length === 0) return null;
 
   return (
-    <section className="border-l-2 border-zinc-200 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100">
-      <div className="flex items-center justify-between">
+    <section className="min-w-0 border-l-2 border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-zinc-100 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
           Fraud flags
         </p>
         {openFlags.length > 0 && (
-          <span className="rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-700">
+          <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-700">
             {openFlags.length} open
           </span>
         )}

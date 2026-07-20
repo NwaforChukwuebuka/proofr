@@ -31,6 +31,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: "#0052ff",
 };
 
@@ -44,7 +46,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${soraDisplay.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body className="flex min-h-full min-w-0 flex-col overflow-x-clip" suppressHydrationWarning>
         {children}
         <ServiceWorkerRegistration />
         <InstallPrompt />

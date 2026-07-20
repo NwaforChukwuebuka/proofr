@@ -46,8 +46,10 @@ export function TrendChart({ trend }: { trend: TrendPoint[] }) {
 
   const max = Math.max(...trend.map((p) => p.amount), 1);
 
+  const dense = trend.length > 14;
+
   return (
-    <div className="relative">
+    <div className="relative w-full min-w-0">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-40"
@@ -61,23 +63,25 @@ export function TrendChart({ trend }: { trend: TrendPoint[] }) {
       <div
         role="img"
         aria-label="Revenue trend chart"
-        className="relative flex h-40 items-end gap-3 overflow-x-auto overflow-y-hidden px-1 pb-0 sm:gap-4 sm:px-1.5"
+        className={`relative flex h-40 w-full min-w-0 items-end overflow-y-hidden px-0.5 pb-0 ${
+          dense ? "gap-px sm:gap-0.5" : "gap-1.5 sm:gap-3"
+        }`}
       >
         {trend.map((point, i) => {
           const heightPct = Math.max((point.amount / max) * 100, 6);
           const isHovered = hovered === i;
           const showLabel =
-            isHovered || i === 0 || i === trend.length - 1 || trend.length <= 8;
+            isHovered || i === 0 || i === trend.length - 1 || (!dense && trend.length <= 8);
 
           return (
             <div
               key={point.period}
-              className="group relative flex h-full w-2.5 shrink-0 flex-col items-center justify-end sm:w-3"
+              className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end"
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
             >
               {isHovered && (
-                <div className="absolute bottom-[calc(100%+8px)] z-10 whitespace-nowrap rounded-md bg-zinc-900 px-2.5 py-1.5 text-left shadow-lg">
+                <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-10 max-w-[min(12rem,70vw)] -translate-x-1/2 rounded-md bg-zinc-900 px-2.5 py-1.5 text-left shadow-lg">
                   <p className="font-mono text-[11px] font-semibold text-white">
                     <Naira amount={point.amount} />
                   </p>
@@ -90,16 +94,16 @@ export function TrendChart({ trend }: { trend: TrendPoint[] }) {
               <button
                 type="button"
                 aria-label={`${formatPeriodLabel(point.period)}: ${formatNaira(point.amount)}`}
-                className={`w-full origin-bottom rounded-full transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                className={`w-full max-w-3 origin-bottom rounded-full transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                   isHovered
-                    ? "bg-brand-dark scale-y-[1.02]"
+                    ? "scale-y-[1.02] bg-brand-dark"
                     : "bg-brand/85 hover:bg-brand"
                 }`}
                 style={{ height: `${heightPct}%` }}
               />
 
               <span
-                className={`mt-2 h-4 text-[10px] font-medium ${
+                className={`mt-2 h-4 max-w-full truncate text-[9px] font-medium sm:text-[10px] ${
                   showLabel
                     ? isHovered
                       ? "text-zinc-700"
