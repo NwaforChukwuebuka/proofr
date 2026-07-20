@@ -11,16 +11,18 @@ export const openApiSpec = {
     description: [
       "Interactive API docs (Swagger UI) — same idea as Flask + flasgger.",
       "",
-      "**How to authenticate**",
-      "1. **Bearer JWT** (merchant/lender routes): get a token via Supabase password grant",
-      "   (`POST {NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password` with anon key + email/password),",
-      "   then click **Authorize** and paste into **BearerAuth**, *or* fill the `Authorization` header on each request.",
-      "2. **Public API key** (`GET /api/public/score`): fill the **`x-api-key`** header on that request",
-      "   (shown in Parameters). To create a key: Authorize as a lender → `POST /api/lenders/api-keys`",
-      "   → copy the one-time `apiKey` from the response.",
-      "3. **Admin** routes: fill the **`x-admin-secret`** header (same value as `ADMIN_API_SECRET`).",
+      "**How to get a bearer token (graders)**",
+      "1. Open **Auth → POST /api/auth/login**.",
+      "2. Body: demo merchant or lender `{ email, password }` (credentials sent to you out-of-band).",
+      "3. Copy `accessToken` from the response.",
+      "4. Click **Authorize → BearerAuth**, paste it, then call the other routes.",
       "",
-      "**Do not paste real production secrets into a public write-up.** Use demo credentials out-of-band.",
+      "You do **not** need `NEXT_PUBLIC_SUPABASE_URL` or the anon key — this server already has them.",
+      "",
+      "**Public API key** (`GET /api/public/score`): after lender login, call `POST /api/lenders/api-keys`,",
+      "copy the one-time `apiKey`, paste into the `x-api-key` header on that request.",
+      "",
+      "**Admin** routes: fill `x-admin-secret` (same as `ADMIN_API_SECRET`, shared out-of-band).",
     ].join("\n"),
   },
   servers: [
@@ -34,6 +36,7 @@ export const openApiSpec = {
     },
   ],
   tags: [
+    { name: "Auth" },
     { name: "Health" },
     { name: "Merchants" },
     { name: "Lenders" },
@@ -148,6 +151,61 @@ export const openApiSpec = {
     },
   },
   paths: {
+    "/api/auth/login": {
+      post: {
+        tags: ["Auth"],
+        summary: "Login (get bearer token)",
+        description:
+          "Exchange demo email/password for a Bearer accessToken. Uses server-side Supabase anon config — graders do not need Supabase URL/keys. Then Authorize → BearerAuth with accessToken.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: {
+                  email: {
+                    type: "string",
+                    format: "email",
+                    example: "demo-merchant@proofr.test",
+                  },
+                  password: {
+                    type: "string",
+                    format: "password",
+                    example: "your-demo-password",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Signed in",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    accessToken: { type: "string" },
+                    tokenType: { type: "string", example: "bearer" },
+                    expiresIn: { type: "integer" },
+                    role: {
+                      type: "string",
+                      enum: ["merchant", "lender", "unknown"],
+                    },
+                    merchantId: { type: "string", format: "uuid" },
+                    lenderId: { type: "string", format: "uuid" },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Invalid credentials" },
+        },
+      },
+    },
     "/api/health": {
       get: {
         tags: ["Health"],

@@ -1,13 +1,11 @@
 {
   "info": {
     "name": "PROOFR API",
-    "description": "As-built PROOFR API collection.\n\n**Public / grading share — keep secrets out**\nShare this **collection only**. Do **not** publish a Postman Environment that you have filled with real `supabaseAnonKey`, passwords, `adminApiSecret`, API keys, or access tokens. Graders should duplicate the blank template environment and paste their own values locally (or use credentials you send out-of-band).\n\n**Getting bearer tokens**\nPROOFR has no `/login` route — merchants and lenders authenticate against Supabase Auth. Use the **Auth** folder first:\n1. Set `supabaseUrl` + `supabaseAnonKey` in your private environment (from `.env.local` / Render).\n2. Set `merchantEmail` / `merchantPassword` and `lenderEmail` / `lenderPassword`.\n3. Run **Merchant login** or **Lender login** — each request saves `access_token` into `{{merchantAccessToken}}` / `{{lenderAccessToken}}` automatically.\n\n**Signup**\n- Merchants: `POST /api/merchants` (creates the auth user + merchant row). Then run **Merchant login** to get a token.\n- Lenders: there is no public signup API. Provision a lender in Supabase (Auth user + `lenders` row), then use **Lender login**.",
+    "description": "As-built PROOFR API collection.\n\n**Public / grading share — keep secrets out**\nShare this **collection only**. Do not publish environments filled with passwords, admin secrets, or tokens.\n\n**Getting bearer tokens**\n1. Set `merchantEmail` / `merchantPassword` and `lenderEmail` / `lenderPassword` (demo accounts, out-of-band).\n2. Run **Auth → Merchant login** or **Auth → Lender login** (`POST /api/auth/login`).\n3. Tokens are saved to `{{merchantAccessToken}}` / `{{lenderAccessToken}}` automatically.\n\nYou do **not** need Supabase URL or anon key — the server already has them.\n\n**Signup**\n- Merchants: `POST /api/merchants`, then Merchant login.\n- Lenders: no public signup; use a provisioned demo lender + Lender login.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "supabaseUrl", "value": "" },
-    { "key": "supabaseAnonKey", "value": "" },
     { "key": "merchantId", "value": "" },
     { "key": "reportId", "value": "" },
     { "key": "loanId", "value": "" },
@@ -26,10 +24,10 @@
   "item": [
     {
       "name": "Auth",
-      "description": "Obtain Supabase JWTs used as Bearer tokens on PROOFR routes. Hit Supabase Auth directly — there is no login route on the PROOFR API.",
+      "description": "POST /api/auth/login — server uses Supabase anon config. Graders only need demo email/password.",
       "item": [
         {
-          "name": "Merchant login (Supabase)",
+          "name": "Merchant login",
           "event": [
             {
               "listen": "test",
@@ -39,11 +37,9 @@
                   "pm.test('Merchant login succeeded', function () {",
                   "  pm.response.to.have.status(200);",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.access_token).to.be.a('string').and.not.empty;",
-                  "  pm.environment.set('merchantAccessToken', json.access_token);",
-                  "  if (json.refresh_token) {",
-                  "    pm.environment.set('merchantRefreshToken', json.refresh_token);",
-                  "  }",
+                  "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.environment.set('merchantAccessToken', json.accessToken);",
+                  "  if (json.merchantId) pm.environment.set('merchantId', json.merchantId);",
                   "});"
                 ]
               }
@@ -51,26 +47,21 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "apikey", "value": "{{supabaseAnonKey}}" },
-              { "key": "Authorization", "value": "Bearer {{supabaseAnonKey}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\"\n}"
             },
             "url": {
-              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
-              "host": ["{{supabaseUrl}}"],
-              "path": ["auth", "v1", "token"],
-              "query": [{ "key": "grant_type", "value": "password" }]
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
             },
-            "description": "Signs in a merchant via Supabase Auth password grant. On success, writes `access_token` to the active environment as `merchantAccessToken` for all subsequent merchant Bearer requests.\n\nRequires env: `supabaseUrl`, `supabaseAnonKey`, `merchantEmail`, `merchantPassword`."
+            "description": "Returns accessToken. Saved as merchantAccessToken. Also sets merchantId when role is merchant."
           }
         },
         {
-          "name": "Lender login (Supabase)",
+          "name": "Lender login",
           "event": [
             {
               "listen": "test",
@@ -80,11 +71,8 @@
                   "pm.test('Lender login succeeded', function () {",
                   "  pm.response.to.have.status(200);",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.access_token).to.be.a('string').and.not.empty;",
-                  "  pm.environment.set('lenderAccessToken', json.access_token);",
-                  "  if (json.refresh_token) {",
-                  "    pm.environment.set('lenderRefreshToken', json.refresh_token);",
-                  "  }",
+                  "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.environment.set('lenderAccessToken', json.accessToken);",
                   "});"
                 ]
               }
@@ -92,27 +80,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "apikey", "value": "{{supabaseAnonKey}}" },
-              { "key": "Authorization", "value": "Bearer {{supabaseAnonKey}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{lenderEmail}}\",\n  \"password\": \"{{lenderPassword}}\"\n}"
             },
             "url": {
-              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
-              "host": ["{{supabaseUrl}}"],
-              "path": ["auth", "v1", "token"],
-              "query": [{ "key": "grant_type", "value": "password" }]
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
             },
-            "description": "Signs in a lender via Supabase Auth password grant. On success, writes `access_token` to the active environment as `lenderAccessToken`.\n\nThere is no public lender signup on this API — use a provisioned lender (e.g. `lender-demo@proofr.test`) then this request.\n\nRequires env: `supabaseUrl`, `supabaseAnonKey`, `lenderEmail`, `lenderPassword`."
+            "description": "Returns accessToken. Saved as lenderAccessToken."
           }
         },
         {
           "name": "Merchant signup then login (flow)",
-          "description": "Run these in order after setting merchant email/password. Signup creates the account; login fills `merchantAccessToken`. Admin-approve the merchant before revenue/report routes will work for real payment data.",
+          "description": "Run in order. Signup creates the account; login fills merchantAccessToken.",
           "item": [
             {
               "name": "1. POST /api/merchants (signup)",
@@ -140,11 +123,11 @@
                   "raw": "{\n  \"phone\": \"{{merchantPhone}}\",\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\",\n  \"businessName\": \"Test Suya Spot\",\n  \"bvnOrNin\": \"12345678901\",\n  \"personalAccountNumber\": \"\",\n  \"businessStartDate\": \"\"\n}"
                 },
                 "url": { "raw": "{{baseUrl}}/api/merchants", "host": ["{{baseUrl}}"], "path": ["api", "merchants"] },
-                "description": "Creates a Supabase Auth user + merchants row. Does **not** return a bearer token — run **Merchant login** next. Saves `merchantId` to the environment."
+                "description": "Creates auth user + merchant. Then run step 2."
               }
             },
             {
-              "name": "2. Merchant login (Supabase)",
+              "name": "2. Merchant login",
               "event": [
                 {
                   "listen": "test",
@@ -154,8 +137,9 @@
                       "pm.test('Merchant login succeeded', function () {",
                       "  pm.response.to.have.status(200);",
                       "  const json = pm.response.json();",
-                      "  pm.expect(json.access_token).to.be.a('string').and.not.empty;",
-                      "  pm.environment.set('merchantAccessToken', json.access_token);",
+                      "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                      "  pm.environment.set('merchantAccessToken', json.accessToken);",
+                      "  if (json.merchantId) pm.environment.set('merchantId', json.merchantId);",
                       "});"
                     ]
                   }
@@ -163,20 +147,15 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "apikey", "value": "{{supabaseAnonKey}}" },
-                  { "key": "Authorization", "value": "Bearer {{supabaseAnonKey}}" }
-                ],
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\"\n}"
                 },
                 "url": {
-                  "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
-                  "host": ["{{supabaseUrl}}"],
-                  "path": ["auth", "v1", "token"],
-                  "query": [{ "key": "grant_type", "value": "password" }]
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
                 }
               }
             }
