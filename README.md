@@ -69,7 +69,7 @@ npm run build
 npm test
 ```
 
-`npm test` runs Vitest unit tests for the core scoring, fraud, KYC, and webhook-signature logic.
+`npm test` runs Vitest unit tests for the core scoring, fraud, KYC, and webhook-signature logic. The `*.test.ts` files live under `lib/` next to the modules they cover — those are the pure decision functions being tested, so the suite sits with that code rather than in a separate top-level `tests/` folder.
 
 For a pre-seeded live demo (recommended for grading), follow [E2E_DEMO.md](./E2E_DEMO.md). To exercise the full setup path yourself, use the flow below.
 
