@@ -16,6 +16,11 @@ PROOFR is credit infrastructure for that segment. Merchants collect payments thr
 
 Live demo: [https://proofr.onrender.com](https://proofr.onrender.com)
 
+**Graders / demo walkthrough:** use [E2E_DEMO.md](./E2E_DEMO.md) for a
+ready-made merchant + lender click-through on the live site (realtime
+payment → credit report → lender mock loan). The section below is the
+full from-scratch setup path if you prefer to create your own accounts.
+
 ---
 
 ## Install
@@ -64,13 +69,15 @@ npm run build
 npm test
 ```
 
-`npm test` runs Vitest unit tests for the core scoring, fraud, KYC, and webhook-signature logic. Verify the full product with the end-to-end flow below.
+`npm test` runs Vitest unit tests for the core scoring, fraud, KYC, and webhook-signature logic.
+
+For a pre-seeded live demo (recommended for grading), follow [E2E_DEMO.md](./E2E_DEMO.md). To exercise the full setup path yourself, use the flow below.
 
 ---
 
 ## Test end-to-end
 
-Walk this flow in the browser (local or [live](https://proofr.onrender.com)).
+Walk this flow in the browser (local or [live](https://proofr.onrender.com)). Prefer [E2E_DEMO.md](./E2E_DEMO.md) if you only need to validate the product user flow.
 
 ### 1. Merchant signup → approval → virtual account
 
@@ -105,11 +112,11 @@ curl -X POST http://localhost:3000/api/merchants/<MERCHANT_ID>/approve \
 3. Confirm the same credit score / recommended amount.
 4. Click **Approve mock loan** — terms should reflect the merchant’s credit tier (not a generic fixed schedule).
 
-### 5. (Optional) Repayment illustration
+### 5. Repayment illustration
 
 Send another payment into the merchant’s virtual account, then reload the lender’s loan view — a repayment period should move to paid.
 
-### 6. (Optional) Admin fraud queue
+### 6. Admin fraud queue
 
 Open `/admin`, enter `ADMIN_API_SECRET`, and confirm the fraud queue loads. Clear/confirm flags if any exist.
 
@@ -131,7 +138,8 @@ Open `/admin`, enter `ADMIN_API_SECRET`, and confirm the fraud queue loads. Clea
 
 ## Notes for graders
 
+- **Demo the live user flow** with [E2E_DEMO.md](./E2E_DEMO.md) (pre-seeded merchant + lender on production).
 - Target market: **informal MSMEs**. The product is credit scoring infrastructure for financial institutions.
 - Payment collection is the **data layer**; the product is the **credit decision** (score + recommended amount) exposed via the lender portal and public API.
 - KYC (BVN/NIN) is intentionally mocked for the MVP.
-- Do not commit real secrets — only `.env.local.example` belongs in git.
+- Do not commit real secrets — only `.env.local.example` belongs in git. The demo guide uses sandbox accounts meant for grading.

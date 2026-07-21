@@ -34,9 +34,6 @@ yarn-error.log*
 .env*
 !.env.local.example
 
-# contains real demo account passwords — never commit
-INVESTOR_DEMO_RUNBOOK.md
-
 # vercel
 .vercel
 
@@ -54,6 +51,7 @@ next-env.d.ts
 /presentations/
 /undefined/
 
-# markdown docs stay local only — only README.md is tracked
+# markdown docs stay local only — README + grader demo guide are tracked
 *.md
 !README.md
+!E2E_DEMO.md
