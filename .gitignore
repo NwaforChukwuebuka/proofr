@@ -44,12 +44,7 @@ INVESTOR_DEMO_RUNBOOK.md
 *.tsbuildinfo
 next-env.d.ts
 
-# internal AI-assisted dev artifacts — kept locally only, never pushed
-/prompts/
-/handoff.md
-/plan.md
-/integration.md
-/PROOFR_Trust_Score_Framework.md
+# internal dev artifacts — kept locally only, never pushed
 /skills/
 /awesome-design-skills/
 /gsap-skills/
@@ -58,3 +53,7 @@ next-env.d.ts
 /design-system/
 /presentations/
 /undefined/
+
+# markdown docs stay local only — only README.md is tracked
+*.md
+!README.md
