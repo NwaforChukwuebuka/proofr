@@ -75,20 +75,20 @@ function Hero() {
       />
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pb-14 pt-12 sm:px-8 sm:pb-16 sm:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-20 lg:pt-20">
-        <div className="max-w-xl">
-          <p className="hero-copy-in font-display text-4xl font-extrabold tracking-tight text-zinc-950 sm:text-5xl">
+        <div className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left">
+          <p className="hero-copy-in font-display text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl lg:text-5xl">
             PROOFR
           </p>
-          <h1 className="hero-copy-in-delay font-display mt-4 text-[2.1rem] font-extrabold leading-[1.08] tracking-tight text-zinc-950 sm:text-4xl lg:text-[2.75rem]">
+          <h1 className="hero-copy-in-delay font-display mt-3 text-[1.65rem] font-extrabold leading-[1.15] tracking-tight text-zinc-950 sm:mt-4 sm:text-3xl sm:leading-[1.1] lg:text-[2.75rem] lg:leading-[1.08]">
             Your business already has proof of revenue.
-            <span className="mt-2 block text-brand">We make lenders trust it.</span>
+            <span className="mt-1.5 block text-brand sm:mt-2">We make lenders trust it.</span>
           </h1>
-          <p className="hero-copy-in-late mt-5 max-w-md text-pretty text-lg leading-relaxed text-zinc-600">
+          <p className="hero-copy-in-late mx-auto mt-4 max-w-md text-pretty text-base leading-relaxed text-zinc-600 sm:mt-5 sm:text-lg lg:mx-0">
             Collect payments normally. Build a verified revenue profile. Access
             financing faster — without spreadsheet archaeology.
           </p>
 
-          <div className="hero-copy-in-late mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <div className="hero-copy-in-late mt-7 flex flex-col items-center gap-3 sm:mt-8 sm:flex-row sm:justify-center lg:justify-start">
             <Link
               href="/signup"
               className="cursor-pointer rounded-full bg-brand px-8 py-3.5 text-center text-sm font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
@@ -103,7 +103,7 @@ function Hero() {
             </Link>
           </div>
 
-          <p className="hero-copy-in-late mt-8 text-xs font-medium tracking-wide text-zinc-500">
+          <p className="hero-copy-in-late mt-7 text-xs font-medium tracking-wide text-zinc-500 sm:mt-8">
             Built for Nigerian merchants &amp; the lenders who fund them
           </p>
         </div>
