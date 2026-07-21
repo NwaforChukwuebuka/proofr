@@ -7,7 +7,9 @@ mock loan.
 
 These are **sandbox demo accounts** (Monnify sandbox + seeded revenue). They
 exist so graders can click through without provisioning their own merchant
-or lender. Do not reuse the passwords outside this demo.
+or lender. Do not reuse the passwords outside this demo. The admin API secret
+below is **intentionally published for testing only** so graders can approve
+new signups — treat it as a grading aid, not a real access-control design.
 
 Verified end-to-end on 2026-07-21. The merchant below has revenue history and
 a generated report, but **no loan yet** — so the “approve mock loan” step
@@ -24,6 +26,27 @@ can still be run live.
 
 **Lender** — "Demo Capital Partners"
 - Login: `lender-demo@proofr.test` / `DemoInvestor2026!`
+
+### Admin API secret (testing only)
+
+**Strictly for grading / testing** — not a production security model. Shared so
+you can approve a newly signed-up merchant (or open `/admin`) without asking
+the team for credentials.
+
+```
+ADMIN_API_SECRET=proofr-local-admin-secret-7ec6b4ff37b8d415
+```
+
+Approve a pending merchant (replace `<MERCHANT_ID>` with the id from signup /
+Supabase / pending list):
+
+```bash
+curl -X POST https://proofr.onrender.com/api/merchants/<MERCHANT_ID>/approve \
+  -H "x-admin-secret: proofr-local-admin-secret-7ec6b4ff37b8d415"
+```
+
+Or open [https://proofr.onrender.com/admin](https://proofr.onrender.com/admin)
+and paste the same secret to load the fraud / pending queue.
 
 **Expected numbers on this merchant** (visible on login, before any new
 payment):
@@ -61,4 +84,7 @@ payment):
 9. *(Optional)* Note the merchant dashboard "Third-party credit lookups"
    toggle and the public score API — credit infrastructure other platforms
    can plug into, not only a lender portal.
+10. *(Optional — new signup)* Create a merchant at `/signup`, then approve
+    them with the admin secret above (curl or `/admin`). After approval,
+    logging in should show a Monnify virtual account.
 
