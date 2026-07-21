@@ -61,9 +61,10 @@ Optional checks:
 ```bash
 npm run lint
 npm run build
+npm test
 ```
 
-There is no automated test suite — verify the product with the end-to-end flow below.
+`npm test` runs Vitest unit tests for the core scoring, fraud, KYC, and webhook-signature logic. Verify the full product with the end-to-end flow below.
 
 ---
 
