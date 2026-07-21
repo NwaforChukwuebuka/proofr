@@ -43,3 +43,18 @@ INVESTOR_DEMO_RUNBOOK.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# internal AI-assisted dev artifacts — kept locally only, never pushed
+/prompts/
+/handoff.md
+/plan.md
+/integration.md
+/PROOFR_Trust_Score_Framework.md
+/skills/
+/awesome-design-skills/
+/gsap-skills/
+/ui-ux-pro-max-skill/
+/ui-inspirations-theme/
+/design-system/
+/presentations/
+/undefined/
