@@ -11,7 +11,7 @@ export interface Transaction {
   created_at: string;
 }
 
-const PREVIEW_COUNT = 5;
+const PREVIEW_COUNT = 4;
 
 export function TransactionsCard({
   transactions,
