@@ -21,8 +21,9 @@ const soraDisplay = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "PROOFR",
-  description: "Proof-of-Revenue platform for merchants and lenders",
+  title: "PROOFR — Proof of revenue lenders can trust",
+  description:
+    "Turn messy business bank transfers into verified revenue profiles, confidence scores, and lender-ready financing evidence.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
